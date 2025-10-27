@@ -1,0 +1,27 @@
+# dependencies
+node_modules/
+package-lock.json # <— keep ONE lockfile; if you use npm, keep this and remove yarn.lock
+# if you use yarn instead, swap the two lines above:
+# yarn.lock
+# npm-debug.log*  # ok to ignore
+
+# Expo / RN caches
+.expo/
+.expo-shared/
+dist/
+web-build/
+*.log
+
+# Native folders (Expo managed: usually ignore)
+android/
+ios/
+# If you plan to edit native code, remove the two lines above.
+
+# Metro / bundler
+.expo-dev/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
