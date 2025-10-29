@@ -15,6 +15,7 @@
     "@react-navigation/native-stack": "^6.10.1",
     "expo": "~52.0.0",
     "expo-asset": "~10.0.10",
+    "expo-auth-session": "~6.0.3",
     "expo-router": "~4.0.10",
     "expo-status-bar": "~2.0.0",
     "npx": "^3.0.0",
