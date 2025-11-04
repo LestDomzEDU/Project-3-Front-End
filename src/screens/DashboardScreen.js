@@ -26,7 +26,7 @@ export default function DashboardScreen({ navigation }) {
   const [modelsModalVisible, setModelsModalVisible] = useState(false);
   const [selectedCollege, setSelectedCollege] = useState(null);
   const { savedApps, addSavedApp, removeSavedApp } = useSavedApps();
-
+  const models = [];
   const colleges = [
     {
       id: "c1",
