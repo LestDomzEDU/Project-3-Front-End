@@ -33,10 +33,8 @@ function DashboardTabs() {
 
 export default function RootNavigator() {
   return (
-
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="GoogleWelcome" component={GoogleWelcomeScreen} />
-    <Stack.Navigator>
       <Stack.Screen
         name="Home"
         component={HomeScreen}
