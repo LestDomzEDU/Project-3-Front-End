@@ -2,27 +2,24 @@ import * as React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
-import GoogleWelcomeScreen from '../screens/GoogleWelcomeScreen';
+import GoogleWelcomeScreen from "../screens/GoogleWelcomeScreen";
 import HomeScreen from "../screens/HomeScreen";
 import OAuthScreen from "../screens/OAuthScreen";
 import DashboardScreen from "../screens/DashboardScreen";
 import SavedApplicationsScreen from "../screens/SavedApplicationsScreen";
 import SettingsScreen from "../screens/SettingsScreen";
-import ProfileIntake from "../screens/profileIntake"; 
-import ReminderScreen from '../screens/ReminderScreen';
-import PreferencesScreen from '../screens/PreferencesScreen';
+import ProfileIntake from "../screens/profileIntake";
+import ReminderScreen from "../screens/ReminderScreen";
+import PreferencesScreen from "../screens/PreferencesScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function DashboardTabs() {
   return (
-    <Tab.Navigator
-      initialRouteName="Dashboard"
-      screenOptions={{ headerShown: false }}
-    >
+    <Tab.Navigator initialRouteName="Dashboard" screenOptions={{ headerShown: false }}>
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Saved Applications" component={SavedApplicationsScreen}/>
+      <Tab.Screen name="Saved Applications" component={SavedApplicationsScreen} />
       <Tab.Screen name="Profile Intake" component={ProfileIntake} />
       <Tab.Screen name="Reminders" component={ReminderScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
@@ -33,28 +30,15 @@ function DashboardTabs() {
 
 export default function RootNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      initialRouteName="Home"          // <-- start app on Home
+      screenOptions={{ headerShown: false }}
+    >
+      <Stack.Screen name="Home" component={HomeScreen} />
+      <Stack.Screen name="OAuth" component={OAuthScreen} options={{ title: "OAuth" }} />
+      <Stack.Screen name="Tabs" component={DashboardTabs} />
       <Stack.Screen name="GoogleWelcome" component={GoogleWelcomeScreen} />
-      <Stack.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="OAuth"
-        component={OAuthScreen}
-        options={{ title: "OAuth" }}
-      />
-      <Stack.Screen
-        name="Tabs"
-        component={DashboardTabs}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="ProfileIntake"
-        component={ProfileIntake}
-        options={{ title: "Profile Intake" }}
-      />
+      <Stack.Screen name="ProfileIntake" component={ProfileIntake} options={{ title: "Profile Intake" }} />
     </Stack.Navigator>
   );
 }
