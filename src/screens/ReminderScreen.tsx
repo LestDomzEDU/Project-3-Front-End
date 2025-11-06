@@ -82,58 +82,58 @@ export default function ReminderScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: PALETTE.bg,
-    paddingHorizontal: 16,
-    paddingTop: 50,
-  },
-  header: {
-    fontSize: 26,
-    fontWeight: "800",
-    marginBottom: 20,
-    color: PALETTE.text,
-  },
-  listContainer: {
-    paddingBottom: 40,
-  },
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: PALETTE.cardBorder,
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 1,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: PALETTE.text,
-  },
-  date: {
-    fontSize: 14,
-    color: PALETTE.subtext,
-    marginTop: 4,
-  },
-  urgent: {
-    color: PALETTE.danger,
-    fontSize: 18,
-    fontWeight: "800",
-  },
-  reminderText: {
-    marginTop: 6,
-    fontSize: 13,
-    color: PALETTE.primary,
-    fontStyle: "italic",
-  },
-  emptyText: {
-    textAlign: "center",
-    color: PALETTE.subtext,
-    marginTop: 24,
-  },
+    container: {
+        flex: 1,
+        backgroundColor: PALETTE.bg,
+        paddingHorizontal: 16,
+        paddingTop: 50,
+    },
+    header: {
+        fontSize: 26,
+        fontWeight: "800",
+        marginBottom: 20,
+        color: PALETTE.text,
+    },
+    listContainer: {
+        paddingBottom: 40,
+    },
+    card: {
+        backgroundColor: "#FFFFFF",
+        borderWidth: 1,
+        borderColor: PALETTE.cardBorder,
+        borderRadius: 16,
+        padding: 14,
+        marginBottom: 12,
+        shadowColor: "#000",
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
+        elevation: 1,
+    },
+    title: {
+        fontSize: 16,
+        fontWeight: "700",
+        color: PALETTE.text,
+    },
+    date: {
+        fontSize: 14,
+        color: PALETTE.subtext,
+        marginTop: 4,
+    },
+    urgent: {
+        color: PALETTE.danger,
+        fontSize: 18,
+        fontWeight: "800",
+    },
+    reminderText: {
+        marginTop: 6,
+        fontSize: 13,
+        color: PALETTE.primary,
+        fontStyle: "italic",
+    },
+    emptyText: {
+        textAlign: "center",
+        color: PALETTE.subtext,
+        marginTop: 24,
+    },
 });
