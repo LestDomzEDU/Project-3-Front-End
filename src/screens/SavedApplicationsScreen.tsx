@@ -91,7 +91,6 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingBottom: 60,
   },
-
   appCard: {
     flexDirection: "row",
     alignItems: "center",
