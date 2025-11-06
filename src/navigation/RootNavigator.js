@@ -7,6 +7,7 @@ import OAuthScreen from '../screens/OAuthScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import SavedApplicationsScreen from '../screens/SavedApplicationsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import GoogleWelcomeScreen from '../screens/GoogleWelcomeScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -23,10 +24,11 @@ function DashboardTabs() {
 
 export default function RootNavigator() {
   return (
-    <Stack.Navigator>
-      <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="OAuth" component={OAuthScreen} options={{ title: 'OAuth' }} />
-      <Stack.Screen name="Tabs" component={DashboardTabs} options={{ headerShown: false }} />
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Home" component={HomeScreen} />
+      <Stack.Screen name="OAuth" component={OAuthScreen} />
+      <Stack.Screen name="Tabs" component={DashboardTabs} />
+      <Stack.Screen name="GoogleWelcome" component={GoogleWelcomeScreen} />
     </Stack.Navigator>
   );
 }
