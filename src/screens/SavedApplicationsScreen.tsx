@@ -1,15 +1,17 @@
 import * as React from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Linking,
-} from "react-native";
+import { View, Text, FlatList, Pressable, StyleSheet, Linking, } from "react-native";
+
+const PALETTE = {
+  bg: "#FFFFFF",
+  text: "#00171F",
+  subtext: "#4B5563",
+  primary: "#00A7E1",
+  navy: "#003459",
+  danger: "#B00020",
+  cardBorder: "#DCE8F2",
+};
 
 export default function SavedApplicationsScreen() {
-  // Example saved app data
   const savedApps = [
     {
       id: "1",
@@ -36,21 +38,19 @@ export default function SavedApplicationsScreen() {
 
   const renderItem = ({ item }: any) => (
     <View style={styles.appCard}>
+      {/* Left urgent mark */}
       <View style={styles.leftIcon}>
         {item.urgent && <Text style={styles.urgentMark}>❗</Text>}
       </View>
 
-      {/* App info */}
       <View style={styles.appInfo}>
         <Text style={styles.appName}>{item.name}</Text>
         <Text style={styles.appCompany}>{item.company}</Text>
       </View>
 
+      {/* Apply button */}
       <Pressable
-        style={({ pressed }) => [
-          styles.applyButton,
-          pressed && { opacity: 0.8 },
-        ]}
+        style={({ pressed }) => [styles.applyButton, pressed && { opacity: 0.9 }]}
         onPress={() => Linking.openURL(item.link)}
       >
         <Text style={styles.applyText}>Apply</Text>
@@ -67,6 +67,9 @@ export default function SavedApplicationsScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.listContainer}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>No saved applications yet.</Text>
+        }
       />
     </View>
   );
@@ -75,7 +78,7 @@ export default function SavedApplicationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: PALETTE.bg,
     paddingHorizontal: 16,
     paddingTop: 50,
   },
@@ -83,7 +86,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: "800",
     marginBottom: 20,
-    color: "#111827",
+    color: PALETTE.text,
   },
   listContainer: {
     paddingBottom: 60,
@@ -91,17 +94,17 @@ const styles = StyleSheet.create({
   appCard: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 12,
     backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: PALETTE.cardBorder,
+    borderRadius: 16,
     padding: 14,
     marginBottom: 12,
-    shadowColor: "#00000011",
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
   },
   leftIcon: {
     width: 30,
@@ -109,7 +112,7 @@ const styles = StyleSheet.create({
   },
   urgentMark: {
     fontSize: 20,
-    color: "#EF4444", //red
+    color: PALETTE.danger, 
   },
   appInfo: {
     flex: 1,
@@ -118,21 +121,27 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#1E293B",
+    color: PALETTE.text,
   },
   appCompany: {
     fontSize: 14,
-    color: "#64748B",
+    color: PALETTE.subtext,
+    marginTop: 2,
   },
   applyButton: {
-    backgroundColor: "#6366F1",
+    backgroundColor: PALETTE.primary, 
     paddingVertical: 8,
     paddingHorizontal: 14,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   applyText: {
     fontSize: 14,
     fontWeight: "700",
     color: "#FFFFFF",
+  },
+  emptyText: {
+    textAlign: "center",
+    marginTop: 24,
+    color: PALETTE.subtext,
   },
 });
