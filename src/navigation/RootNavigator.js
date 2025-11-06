@@ -2,6 +2,7 @@ import * as React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
+import GoogleWelcomeScreen from '../screens/GoogleWelcomeScreen';
 import HomeScreen from "../screens/HomeScreen";
 import OAuthScreen from "../screens/OAuthScreen";
 import DashboardScreen from "../screens/DashboardScreen";
@@ -32,6 +33,9 @@ function DashboardTabs() {
 
 export default function RootNavigator() {
   return (
+
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="GoogleWelcome" component={GoogleWelcomeScreen} />
     <Stack.Navigator>
       <Stack.Screen
         name="Home"
