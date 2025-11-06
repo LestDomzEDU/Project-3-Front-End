@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -30,24 +30,24 @@ export default function DashboardScreen({ navigation }) {
   const colleges = [
     {
       id: "c1",
-      name: "TechU",
+      name: "Georgia Tech",
       program: "MS Computer Science",
       urgent: true,
-      link: "https://techu.example",
+      link: "https://www.gatech.edu/",
     },
     {
       id: "c2",
-      name: "DataState",
+      name: "San Jose State University",
       program: "MS Data Science",
       urgent: false,
-      link: "https://datastate.example",
+      link: "https://www.sjsu.edu/",
     },
     {
       id: "c3",
-      name: "Research Institute",
+      name: "Harvard University",
       program: "PhD ML",
       urgent: true,
-      link: "https://research.example",
+      link: "https://www.harvard.edu/",
     },
   ];
 
