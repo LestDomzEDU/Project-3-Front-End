@@ -1,6 +1,6 @@
 import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
-import PreferencesScreen from "../../screens/PreferencesScreen";
+import PreferencesScreen from "../PreferencesScreen";
 
 describe("PreferencesScreen", () => {
   it("renders the header and school list", () => {

@@ -1,6 +1,6 @@
 import React from "react";
 import { render } from "@testing-library/react-native";
-import ReminderScreen from "../../screens/ReminderScreen";
+import ReminderScreen from "../ReminderScreen";
 
 describe("ReminderScreen", () => {
   it("renders the header and reminders list", () => {

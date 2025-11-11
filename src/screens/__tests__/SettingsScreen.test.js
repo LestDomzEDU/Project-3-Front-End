@@ -1,6 +1,6 @@
 import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
-import SettingsScreen from "../../screens/SettingsScreen";
+import SettingsScreen from "../SettingsScreen";
 import { Alert } from "react-native";
 
 const mockNavigate = jest.fn();

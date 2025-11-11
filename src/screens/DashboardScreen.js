@@ -1,8 +1,8 @@
 import { useState, useCallback } from "react";
-import { View, Text,StyleSheet, FlatList, TouchableOpacity, Modal, Pressable, Linking, } from "react-native";
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, Pressable, Linking, } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSavedApps } from "../context/SavedAppsContext";
-import { useNavigation } from "@react-navigation/native"; 
+import { useNavigation } from "@react-navigation/native";
 
 const PALETTE = {
   bg: "#FFFFFF",
