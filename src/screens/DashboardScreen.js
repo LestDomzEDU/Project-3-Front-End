@@ -1,16 +1,8 @@
 import { useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Modal,
-  Pressable,
-  Linking,
-} from "react-native";
+import { View, Text,StyleSheet, FlatList, TouchableOpacity, Modal, Pressable, Linking, } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSavedApps } from "../context/SavedAppsContext";
+import { useNavigation } from "@react-navigation/native"; 
 
 const PALETTE = {
   bg: "#FFFFFF",
@@ -23,10 +15,12 @@ const PALETTE = {
 };
 
 export default function DashboardScreen({ navigation }) {
+  const nav = useNavigation(); 
   const [modelsModalVisible, setModelsModalVisible] = useState(false);
   const [selectedCollege, setSelectedCollege] = useState(null);
   const { savedApps, addSavedApp, removeSavedApp } = useSavedApps();
   const models = [];
+
   const colleges = [
     {
       id: "c1",
@@ -67,10 +61,7 @@ export default function DashboardScreen({ navigation }) {
 
           <View style={s.actionsRow}>
             {item.link ? (
-              <Pressable
-                onPress={() => openJobUrl(item.link)}
-                style={s.linkBtn}
-              >
+              <Pressable onPress={() => openJobUrl(item.link)} style={s.linkBtn}>
                 <Text style={s.linkBtnText}>View Posting</Text>
               </Pressable>
             ) : (
@@ -79,8 +70,9 @@ export default function DashboardScreen({ navigation }) {
 
             <TouchableOpacity
               onPress={() => {
-                if (saved) removeSavedApp(item.id);
-                else
+                if (saved) {
+                  removeSavedApp(item.id);
+                } else {
                   addSavedApp({
                     id: item.id,
                     name: item.name,
@@ -88,9 +80,9 @@ export default function DashboardScreen({ navigation }) {
                     urgent: item.urgent,
                     link: item.link,
                   });
+                }
               }}
-              style={saved ? s.removeBtn : s.saveBtn}
-            >
+              style={saved ? s.removeBtn : s.saveBtn}>
               <Text style={saved ? s.removeBtnText : s.saveBtnText}>
                 {saved ? "Remove" : "Save"}
               </Text>
@@ -105,16 +97,16 @@ export default function DashboardScreen({ navigation }) {
   return (
     <SafeAreaView style={s.screen}>
       <View style={s.header}>
-        <TouchableOpacity
-          onPress={() =>
-            navigation && navigation.navigate?.("Saved Applications")
-          }
-        >
-          <Text style={s.back}>Saved</Text>
-        </TouchableOpacity>
+        <View style={s.leftGroup}>
+          <TouchableOpacity
+            onPress={() =>
+              navigation && navigation.navigate?.("Saved Applications")
+            }>
+            <Text style={s.back}>Saved</Text>
+          </TouchableOpacity>
+        </View>
 
         <Text style={s.h1}>Dashboard</Text>
-
         <TouchableOpacity onPress={() => setModelsModalVisible(true)}>
           <Text style={s.back}>Models</Text>
         </TouchableOpacity>
@@ -158,7 +150,6 @@ export default function DashboardScreen({ navigation }) {
                 </Pressable>
               )}
             />
-
             <TouchableOpacity
               style={s.closeButton}
               onPress={() => setModelsModalVisible(false)}
@@ -168,12 +159,18 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </View>
       </Modal>
+      <TouchableOpacity style={s.backButton} onPress={() => nav.navigate("Home")}>
+        <Text style={s.backButtonText}>← Back</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: PALETTE.bg },
+  screen: { 
+    flex: 1, 
+    backgroundColor: PALETTE.bg 
+  },
   header: {
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -183,9 +180,43 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  back: { color: PALETTE.primary, fontWeight: "700" },
-  h1: { fontSize: 18, fontWeight: "800", color: PALETTE.text },
-
+  leftGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  backArrow: {
+    color: PALETTE.primary,
+    fontWeight: "700",
+    fontSize: 16,
+    marginRight: 4,
+  },
+  back: { 
+    color: PALETTE.primary, 
+    fontWeight: "700" 
+  },
+  h1: { 
+    fontSize: 18, 
+    fontWeight: "800", 
+    color: PALETTE.text 
+  },
+  backButton: {
+    alignSelf: "flex-start", 
+    marginLeft: 20,          
+    marginBottom: 40,
+    backgroundColor: PALETTE.primary,
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    alignItems: "flex-start", 
+    justifyContent: "center",
+  },
+  backButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
+    textAlign: "left",       
+  },
   card: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -199,24 +230,31 @@ const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     elevation: 1,
   },
-  title: { fontSize: 16, fontWeight: "700", color: PALETTE.text },
-  sub: { marginTop: 2, color: PALETTE.subtext },
-
+  title: { 
+    fontSize: 16, 
+    fontWeight: "700", 
+    color: PALETTE.text 
+  },
+  sub: { 
+    marginTop: 2, 
+    color: PALETTE.subtext 
+  },
   actionsRow: {
     marginTop: 12,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
   },
-
   linkBtn: {
     backgroundColor: PALETTE.primary,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
   },
-  linkBtnText: { color: "#fff", fontWeight: "700" },
-
+  linkBtnText: { 
+    color: "#fff", 
+    fontWeight: "700" 
+  },
   saveBtn: {
     marginLeft: "auto",
     paddingHorizontal: 12,
@@ -226,8 +264,9 @@ const s = StyleSheet.create({
     borderColor: PALETTE.cardBorder,
     backgroundColor: "#E6F8FF",
   },
-  saveBtnText: { color: PALETTE.navy, fontWeight: "700" },
-
+  saveBtnText: { color: PALETTE.navy, 
+    fontWeight: "700" 
+  },
   removeBtn: {
     marginLeft: "auto",
     paddingHorizontal: 12,
@@ -237,8 +276,10 @@ const s = StyleSheet.create({
     borderColor: PALETTE.cardBorder,
     backgroundColor: "#FFF5F6",
   },
-  removeBtnText: { color: PALETTE.danger, fontWeight: "600" },
-
+  removeBtnText: { 
+    color: PALETTE.danger, 
+    fontWeight: "600" 
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
@@ -252,14 +293,20 @@ const s = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
   },
-  modalTitle: { fontSize: 18, fontWeight: "600", marginBottom: 8 },
+  modalTitle: { 
+    fontSize: 18, 
+    fontWeight: "600", 
+    marginBottom: 8 
+  },
   modelItem: {
     paddingVertical: 12,
     paddingHorizontal: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#eee",
   },
-  modelText: { fontSize: 16 },
+  modelText: { 
+    fontSize: 16 
+  },
   closeButton: {
     marginTop: 12,
     alignSelf: "flex-end",
@@ -268,5 +315,8 @@ const s = StyleSheet.create({
     backgroundColor: "#007AFF",
     borderRadius: 8,
   },
-  closeButtonText: { color: "#fff", fontWeight: "600" },
+  closeButtonText: { 
+    color: "#fff", 
+    fontWeight: "600" 
+  },
 });
