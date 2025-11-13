@@ -17,8 +17,11 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NavigationProp } from "@react-navigation/native";
+import API from "../lib/api";
+import { useAuth } from "../context/AuthContext";
+
 type RootNavParamList = {
-  Tabs: undefined;
+  Tabs: undefined | { screen?: string; params?: { topSchools?: any } };
   [key: string]: object | undefined;
 };
 
@@ -75,6 +78,7 @@ const SelectField: React.FC<SelectFieldProps> = ({
 };
 
 export default function ProfileIntake() {
+  const { me } = useAuth(); // me may be null until auth finishes
   const navigation = useNavigation() as NavigationProp<RootNavParamList>;
 
   // numeric states + text mirrors for editing
@@ -139,24 +143,116 @@ export default function ProfileIntake() {
     );
   }
 
-  function handleSubmit() {
-    // Make sure we parse the latest text fields before submit:
-    const parsedBudget = parseFloat(budgetText);
-    const parsedGpa = parseFloat(gpaText);
-    setBudget(Number.isFinite(parsedBudget) ? parsedBudget : 0);
-    setGpa(Number.isFinite(parsedGpa) ? parsedGpa : 0);
-    // use the numeric values (or read them from budget/gpa after setState if needed)
-    const profile = {
-      country,
-      budget: Number.isFinite(parsedBudget) ? parsedBudget : 0,
-      /* ... other fields ... */
-      gpa: Number.isFinite(parsedGpa) ? parsedGpa : 0,
-    };
-    console.log("Profile submitted:", profile);
-    navigation.navigate("Tabs");
-  }
+  // function handleSubmit() {
+  //   // Make sure we parse the latest text fields before submit:
+  //   const parsedBudget = parseFloat(budgetText);
+  //   const parsedGpa = parseFloat(gpaText);
+  //   setBudget(Number.isFinite(parsedBudget) ? parsedBudget : 0);
+  //   setGpa(Number.isFinite(parsedGpa) ? parsedGpa : 0);
+  //   // use the numeric values (or read them from budget/gpa after setState if needed)
+  //   const profile = {
+  //     country,
+  //     budget: Number.isFinite(parsedBudget) ? parsedBudget : 0,
+  //     /* ... other fields ... */
+  //     gpa: Number.isFinite(parsedGpa) ? parsedGpa : 0,
+  //   };
+  //   console.log("Profile submitted:", profile);
+  //   navigation.navigate("Tabs");
+  // }
   function dashboardButton() {
     navigation.navigate("Tabs");
+  }
+
+  const [submitting, setSubmitting] = React.useState(false);
+
+  async function handleSubmit() {
+    setSubmitting(true);
+    try {
+      // 1) Normalize numbers
+      const parsedBudget = parseFloat(budgetText);
+      const parsedGpa = parseFloat(gpaText);
+      const finalBudget = Number.isFinite(parsedBudget) ? parsedBudget : 0;
+      const finalGpa = Number.isFinite(parsedGpa) ? parsedGpa : 0;
+
+      // 1.a Obtain student id from auth context when possible
+      const studentId =
+        me?.id || me?.studentId || me?.sub || me?.login || "current-user-id";
+      if (studentId === "current-user-id") {
+        console.warn(
+          "No studentId available from auth context; using fallback placeholder. Replace with real id."
+        );
+      }
+
+      // 2) Map UI → backend StudentPreference fields + enums
+      const prefPayload: any = {
+        budget: finalBudget, // Double
+        schoolYear: applyYear || null,
+        expectedGrad: gradDate || null,
+        // SchoolType expected values: PRIVATE | PUBLIC | BOTH
+        schoolType:
+          isPrivate == null ? "BOTH" : isPrivate ? "PRIVATE" : "PUBLIC",
+        state: stateLocation || null,
+        programType: major || null,
+        targetCountry: country || null,
+        major: major || null,
+        // EnrollmentType: FULL_TIME | PART_TIME
+        enrollmentType: timeType === "Full-time" ? "FULL_TIME" : "PART_TIME",
+        // Modality: IN_PERSON | HYBRID | ONLINE
+        modality:
+          format === "In person"
+            ? "IN_PERSON"
+            : format === "Hybrid"
+            ? "HYBRID"
+            : "ONLINE",
+        gpa: finalGpa,
+        // RequirementType: CAPSTONE or NONE (adjust for your server)
+        requirementType: capstone ? "CAPSTONE" : "NONE",
+      };
+
+      // 3) Save/Upsert preferences (POST)
+      const saveUrl = `${
+        API.BASE
+      }/api/preferences?studentId=${encodeURIComponent(String(studentId))}`;
+      const saveRes = await fetch(saveUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(prefPayload),
+      });
+
+      if (!saveRes.ok) {
+        const text = await saveRes.text().catch(() => "");
+        throw new Error(
+          `Failed to save preferences: ${saveRes.status} ${text}`
+        );
+      }
+
+      // 4) Fetch top 5 scored schools
+      const topUrl = `${
+        API.BASE
+      }/api/schools/top5?studentId=${encodeURIComponent(String(studentId))}`;
+      const topRes = await fetch(topUrl, { credentials: "include" });
+      if (!topRes.ok) {
+        const text = await topRes.text().catch(() => "");
+        throw new Error(
+          `Failed to fetch top schools: ${topRes.status} ${text}`
+        );
+      }
+      const topSchools = await topRes.json();
+
+      // 5) Navigate with results into Tabs -> Dashboard
+      // Use nested param form to ensure inner tab receives the params
+      navigation.navigate("Tabs", {
+        screen: "Dashboard",
+        params: { topSchools },
+      });
+    } catch (err) {
+      console.warn("Submit error:", err);
+      // Graceful fallback: go to Dashboard without results
+      navigation.navigate("Tabs", { screen: "Dashboard" });
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -282,8 +378,14 @@ export default function ProfileIntake() {
             />
           </View>
 
-          <Pressable style={styles.button} onPress={handleSubmit}>
-            <Text style={styles.buttonText}>Save profile</Text>
+          <Pressable
+            style={styles.button}
+            onPress={handleSubmit}
+            disabled={submitting}
+          >
+            <Text style={styles.buttonText}>
+              {submitting ? "Searching…" : "Save profile"}
+            </Text>
           </Pressable>
           <Pressable
             style={[

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -22,71 +22,89 @@ const PALETTE = {
   cardBorder: "#DCE8F2",
 };
 
-export default function DashboardScreen({ navigation }) {
+export default function DashboardScreen({ navigation, route }) {
   const [modelsModalVisible, setModelsModalVisible] = useState(false);
   const [selectedCollege, setSelectedCollege] = useState(null);
   const { savedApps, addSavedApp, removeSavedApp } = useSavedApps();
-  const models = [];
-  const colleges = [
+
+  // read results passed in when ProfileIntake navigates:
+  const topSchools = route?.params?.topSchools ?? null;
+
+  const defaultColleges = [
     {
       id: "c1",
       name: "Georgia Tech",
-      program: "MS Computer Science",
+      programName: "MS Computer Science",
       urgent: true,
-      link: "https://www.gatech.edu/",
+      websiteUrl: "https://www.gatech.edu/",
     },
     {
       id: "c2",
       name: "San Jose State University",
-      program: "MS Data Science",
+      programName: "MS Data Science",
       urgent: false,
-      link: "https://www.sjsu.edu/",
+      websiteUrl: "https://www.sjsu.edu/",
     },
     {
       id: "c3",
       name: "Harvard University",
-      program: "PhD ML",
+      programName: "PhD ML",
       urgent: true,
-      link: "https://www.harvard.edu/",
+      websiteUrl: "https://www.harvard.edu/",
     },
   ];
 
+  // Use your exact logic:
+  const dataToShow =
+    Array.isArray(topSchools) && topSchools.length > 0
+      ? topSchools
+      : defaultColleges;
+
+  const openUrl = (url) => {
+    if (!url) return;
+    Linking.openURL(url).catch(() => {});
+  };
+
+  const keyForCollege = useCallback(
+    (item) => String(item.id ?? item.schoolId ?? item.name),
+    []
+  );
+
   const renderItem = useCallback(
     ({ item }) => {
-      const saved = savedApps.find((a) => a.id === item.id);
+      const id = item.id ?? item.schoolId ?? item.name;
+      const saved = savedApps.find((a) => a.id === id);
 
-      const openJobUrl = (url) => {
-        if (!url) return;
-        Linking.openURL(url).catch(() => {});
-      };
+      const name =
+        item.name ?? item.schoolName ?? item.programName ?? "Untitled";
+      const program =
+        item.programName ?? item.program ?? item.programType ?? "Program info";
+      const website = item.websiteUrl ?? item.website ?? item.link ?? null;
 
       return (
         <View style={s.card}>
-          <Text style={s.title}>{item.name}</Text>
-          <Text style={s.sub}>{item.program}</Text>
+          <Text style={s.title}>{name}</Text>
+          <Text style={s.sub}>{program}</Text>
 
           <View style={s.actionsRow}>
-            {item.link ? (
-              <Pressable
-                onPress={() => openJobUrl(item.link)}
-                style={s.linkBtn}
-              >
-                <Text style={s.linkBtnText}>View Posting</Text>
+            {website ? (
+              <Pressable onPress={() => openUrl(website)} style={s.linkBtn}>
+                <Text style={s.linkBtnText}>View Website</Text>
               </Pressable>
             ) : (
-              <Text style={[s.sub, { opacity: 0.7 }]}>No direct link</Text>
+              <Text style={[s.sub, { opacity: 0.7 }]}>No website</Text>
             )}
 
             <TouchableOpacity
               onPress={() => {
-                if (saved) removeSavedApp(item.id);
+                if (saved) removeSavedApp(id);
                 else
                   addSavedApp({
-                    id: item.id,
-                    name: item.name,
-                    company: item.program,
-                    urgent: item.urgent,
-                    link: item.link,
+                    id,
+                    name,
+                    company: program,
+                    urgent: !!item.urgent,
+                    link: website,
                   });
               }}
               style={saved ? s.removeBtn : s.saveBtn}
@@ -95,12 +113,30 @@ export default function DashboardScreen({ navigation }) {
                 {saved ? "Remove" : "Save"}
               </Text>
             </TouchableOpacity>
+
+            <Pressable
+              style={[s.modelTrigger, { marginLeft: 8 }]}
+              onPress={() => {
+                setSelectedCollege(item);
+                setModelsModalVisible(true);
+              }}
+            >
+              <Text
+                style={
+                  s.modelTriggerText ?? { color: "#007AFF", fontWeight: "700" }
+                }
+              >
+                Show Models
+              </Text>
+            </Pressable>
           </View>
         </View>
       );
     },
     [savedApps, addSavedApp, removeSavedApp]
   );
+
+  const models = []; // leave for now; wire to model data if you add it later
 
   return (
     <SafeAreaView style={s.screen}>
@@ -122,8 +158,8 @@ export default function DashboardScreen({ navigation }) {
 
       <FlatList
         contentContainerStyle={{ padding: 16 }}
-        data={colleges}
-        keyExtractor={(item) => item.id}
+        data={dataToShow}
+        keyExtractor={keyForCollege}
         ListEmptyComponent={
           <Text style={[s.sub, { textAlign: "center", marginTop: 24 }]}>
             No matches yet.
@@ -143,12 +179,16 @@ export default function DashboardScreen({ navigation }) {
             <Text style={s.modalTitle}>Models</Text>
             <Text style={{ marginBottom: 8, color: "#374151" }}>
               {selectedCollege
-                ? `${selectedCollege.name} — ${selectedCollege.program}`
+                ? `${
+                    selectedCollege.name ?? selectedCollege.schoolName ?? ""
+                  } — ${
+                    selectedCollege.programName ?? selectedCollege.program ?? ""
+                  }`
                 : ""}
             </Text>
             <FlatList
               data={models}
-              keyExtractor={(item) => item}
+              keyExtractor={(item) => String(item)}
               renderItem={({ item }) => (
                 <Pressable
                   style={s.modelItem}
