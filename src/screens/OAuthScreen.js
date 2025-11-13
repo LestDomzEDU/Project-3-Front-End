@@ -1,9 +1,17 @@
-import * as React from 'react';
-import { View, Text, StyleSheet, Button, ActivityIndicator, Alert, Image } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { WebView } from 'react-native-webview';
-import * as WebBrowser from 'expo-web-browser';
-import API from '../lib/api';
+import * as React from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Button,
+  ActivityIndicator,
+  Alert,
+  Image,
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { WebView } from "react-native-webview";
+import * as WebBrowser from "expo-web-browser";
+import API from "../lib/api";
 
 export default function OAuthScreen() {
   const navigation = useNavigation();
@@ -21,14 +29,16 @@ export default function OAuthScreen() {
     (async () => {
       if (!booted.current) {
         booted.current = true;
-        try { await fetch(API.LOGOUT, { method: 'POST', credentials: 'include' }); } catch {}
+        try {
+          await fetch(API.LOGOUT, { method: "POST", credentials: "include" });
+        } catch {}
         await fetchMe();
       }
     })();
   }, []);
 
   const fetchMe = async () => {
-    const res = await fetch(API.ME, { credentials: 'include' });
+    const res = await fetch(API.ME, { credentials: "include" });
     return res.json().catch(() => ({ authenticated: false }));
   };
 
@@ -38,7 +48,7 @@ export default function OAuthScreen() {
     while (Date.now() - start < ms) {
       const data = await fetchMe();
       if (data?.authenticated) return data;
-      await new Promise(r => setTimeout(r, 350));
+      await new Promise((r) => setTimeout(r, 350));
     }
     return null;
   };
@@ -53,28 +63,34 @@ export default function OAuthScreen() {
   const startLoginGoogle = async () => {
     try {
       setLoading(true);
-      const url = googleFreshNeeded.current ? API.LOGIN_GOOGLE_FRESH : API.LOGIN_GOOGLE;
+      const url = googleFreshNeeded.current
+        ? API.LOGIN_GOOGLE_FRESH
+        : API.LOGIN_GOOGLE;
       await WebBrowser.openAuthSessionAsync(url, API.OAUTH_FINAL);
       const authed = await waitForAuth();
       if (!authed) {
-        Alert.alert('Sign-in', 'Still finishing sign-in… trying again.');
+        Alert.alert("Sign-in", "Still finishing sign-in… trying again.");
         const retry = await waitForAuth(5000);
-        if (!retry) throw new Error('Could not verify sign-in.');
+        if (!retry) throw new Error("Could not verify sign-in.");
       }
-      navigation.navigate('GoogleWelcome');
+      // After successful sign-in, send user to Profile Intake to collect preferences
+      navigation.navigate("ProfileIntake");
       googleFreshNeeded.current = false;
     } catch (e) {
-      Alert.alert('Google Sign-in failed', String(e));
+      Alert.alert("Google Sign-in failed", String(e));
     } finally {
       setLoading(false);
     }
   };
 
   const onNavChange = async (event) => {
-    const url = event?.url || '';
-    if (url.startsWith(API.OAUTH_FINAL) ||
-        url.startsWith(API.ME) ||
-        url === `${API.BASE}/` || url.startsWith(`${API.BASE}/?`)) {
+    const url = event?.url || "";
+    if (
+      url.startsWith(API.OAUTH_FINAL) ||
+      url.startsWith(API.ME) ||
+      url === `${API.BASE}/` ||
+      url.startsWith(`${API.BASE}/?`)
+    ) {
       setShowWeb(false);
       setLoginUrl(null);
       const authed = await waitForAuth();
@@ -82,41 +98,53 @@ export default function OAuthScreen() {
       // Keep GitHub behavior (stay on this screen showing the signed-in panel)
       const latest = await fetchMe();
       setMe(latest);
+      // After GitHub sign-in, redirect to Profile Intake
+      navigation.navigate("ProfileIntake");
     }
   };
 
   const doLogout = async () => {
     try {
       setLoading(true);
-      await fetch(API.LOGOUT, { method: 'POST', credentials: 'include' });
+      await fetch(API.LOGOUT, { method: "POST", credentials: "include" });
       setMe({ authenticated: false });
       googleFreshNeeded.current = true; // next Google login should prompt again
     } catch (e) {
-      Alert.alert('Logout failed', String(e));
+      Alert.alert("Logout failed", String(e));
     } finally {
       setLoading(false);
     }
   };
 
-  React.useEffect(() => { (async () => setMe(await fetchMe()))(); }, []);
+  React.useEffect(() => {
+    (async () => setMe(await fetchMe()))();
+  }, []);
 
   const Authenticated = () => (
-    <View style={{ width: '100%', alignItems: 'center' }}>
+    <View style={{ width: "100%", alignItems: "center" }}>
       <Text style={styles.title}>You’re signed in</Text>
       {!!me?.avatar_url && (
-        <Image source={{ uri: me.avatar_url }} style={{ width: 96, height: 96, borderRadius: 48, marginBottom: 8 }} />
+        <Image
+          source={{ uri: me.avatar_url }}
+          style={{ width: 96, height: 96, borderRadius: 48, marginBottom: 8 }}
+        />
       )}
-      <Text style={styles.sub}>{me?.login || me?.email || '(no username)'}</Text>
+      <Text style={styles.sub}>
+        {me?.login || me?.email || "(no username)"}
+      </Text>
 
       <View style={{ height: 12 }} />
-      <Button title="Go to app" onPress={() => navigation.navigate('Tabs')} />
+      <Button
+        title="Go to app"
+        onPress={() => navigation.navigate("ProfileIntake")}
+      />
       <View style={{ height: 8 }} />
       <Button title="Logout" color="#b00020" onPress={doLogout} />
     </View>
   );
 
   const Unauthenticated = () => (
-    <View style={{ width: '100%', alignItems: 'center' }}>
+    <View style={{ width: "100%", alignItems: "center" }}>
       <Text style={styles.title}>Sign in</Text>
       {loading ? <ActivityIndicator style={{ marginVertical: 12 }} /> : null}
       <Button title="Login with GitHub" onPress={startLoginGithub} />
@@ -130,13 +158,15 @@ export default function OAuthScreen() {
       {me?.authenticated ? <Authenticated /> : <Unauthenticated />}
 
       {showWeb && loginUrl ? (
-        <View style={{ flex: 1, width: '100%', marginTop: 12 }}>
+        <View style={{ flex: 1, width: "100%", marginTop: 12 }}>
           <WebView
             key={loginUrl}
             source={{ uri: loginUrl }}
             onNavigationStateChange={onNavChange}
             startInLoadingState
-            renderLoading={() => <ActivityIndicator style={{ marginTop: 20 }} />}
+            renderLoading={() => (
+              <ActivityIndicator style={{ marginTop: 20 }} />
+            )}
             sharedCookiesEnabled
             thirdPartyCookiesEnabled
           />
@@ -147,7 +177,13 @@ export default function OAuthScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'flex-start', padding: 20, backgroundColor: '#fff' },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 12, marginTop: 8 },
-  sub: { fontSize: 16, color: '#333', marginBottom: 4, textAlign: 'center' },
+  container: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "flex-start",
+    padding: 20,
+    backgroundColor: "#fff",
+  },
+  title: { fontSize: 22, fontWeight: "700", marginBottom: 12, marginTop: 8 },
+  sub: { fontSize: 16, color: "#333", marginBottom: 4, textAlign: "center" },
 });
