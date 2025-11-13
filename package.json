@@ -9,7 +9,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "test": "jest",
-    "build": "expo export --platform web",
+    "build": "expo export --platform web --output-dir dist",
     "heroku-postbuild": "npm run build",
     "serve": "node server.js"
   },
