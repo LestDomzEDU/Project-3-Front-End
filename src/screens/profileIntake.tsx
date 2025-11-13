@@ -155,6 +155,9 @@ export default function ProfileIntake() {
     console.log("Profile submitted:", profile);
     navigation.navigate("Tabs");
   }
+  function dashboardButton() {
+    navigation.navigate("Tabs");
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -281,6 +284,15 @@ export default function ProfileIntake() {
 
           <Pressable style={styles.button} onPress={handleSubmit}>
             <Text style={styles.buttonText}>Save profile</Text>
+          </Pressable>
+          <Pressable
+            style={[
+              styles.button,
+              { backgroundColor: "#6B7280", marginTop: 10 },
+            ]}
+            onPress={dashboardButton}
+          >
+            <Text style={styles.buttonText}>Go to Dashboard</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
