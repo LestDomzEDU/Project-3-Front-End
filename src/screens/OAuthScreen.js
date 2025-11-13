@@ -52,11 +52,48 @@ export default function OAuthScreen() {
     return null;
   };
 
-  // GitHub (seamless in-app WebView)
+  // GitHub (seamless in-app WebView on native, popup on web)
   const startLoginGithub = () => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      // if web, redirect directly to GitHub OAuth
-      window.location.href = API.LOGIN_GITHUB;
+      // On web, open OAuth in a popup window and monitor it
+      setLoading(true);
+      const popup = window.open(
+        API.LOGIN_GITHUB,
+        'github-oauth',
+        'width=500,height=600,scrollbars=yes,resizable=yes'
+      );
+      
+      // Check if popup was blocked
+      if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+        Alert.alert('Popup blocked', 'Please allow popups for this site to sign in with GitHub.');
+        setLoading(false);
+        return;
+      }
+      
+      const checkPopup = setInterval(async () => {
+        if (!popup || popup.closed) {
+          clearInterval(checkPopup);
+          setLoading(false);
+          // setting the me state to the latest user data
+          setTimeout(async () => {
+            const authed = await waitForAuth(15000);
+            if (authed) {
+              const latest = await fetchMe();
+              setMe(latest);
+            }
+          }, 500);
+          return;
+        }
+      }, 500);
+      
+      // timeout after 5 minutes
+      setTimeout(() => {
+        clearInterval(checkPopup);
+        if (popup && !popup.closed) {
+          popup.close();
+        }
+        setLoading(false);
+      }, 300000);
     } else if (Platform.OS !== 'web') {
       setLoginUrl(API.LOGIN_GITHUB);
       setShowWeb(true);
@@ -69,10 +106,43 @@ export default function OAuthScreen() {
       setLoading(true);
       const url = API.LOGIN_GOOGLE;
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        // if web, redirect directly to Google OAuth
-        // same code as before just adding it to the web version
-        window.location.href = url;
-        return;
+        // on web, open OAuth in a popup window and monitor it
+        const popup = window.open(
+          url,
+          'google-oauth',
+          'width=500,height=600,scrollbars=yes,resizable=yes'
+        );
+        
+        // check if popup was blocked
+        if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+          Alert.alert('Popup blocked', 'Please allow popups for this site to sign in with Google.');
+          setLoading(false);
+          return;
+        }
+        
+        const checkPopup = setInterval(async () => {
+          if (!popup || popup.closed) {
+            clearInterval(checkPopup);
+            setLoading(false);
+            // setting the me state to the latest user data
+            setTimeout(async () => {
+              const authed = await waitForAuth(15000);
+              if (authed) {
+                navigation.navigate('GoogleWelcome');
+                googleFreshNeeded.current = false;
+              }
+            }, 500);
+            return;
+          }
+        }, 500);
+        
+        setTimeout(() => {
+          clearInterval(checkPopup);
+          if (popup && !popup.closed) {
+            popup.close();
+          }
+          setLoading(false);
+        }, 300000);
       } else {
         await WebBrowser.openAuthSessionAsync(url, API.OAUTH_FINAL);
         const authed = await waitForAuth();
@@ -86,7 +156,6 @@ export default function OAuthScreen() {
       }
     } catch (e) {
       Alert.alert('Google Sign-in failed', String(e));
-    } finally {
       setLoading(false);
     }
   };
@@ -119,7 +188,29 @@ export default function OAuthScreen() {
     }
   };
 
-  React.useEffect(() => { (async () => setMe(await fetchMe()))(); }, []);
+  React.useEffect(() => { 
+    (async () => {
+      const user = await fetchMe();
+      setMe(user);
+      
+      // on web, check if we're coming back from OAuth callback
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const url = window.location.href;
+        if (url.includes('/oauth2/final') || url.includes(API.OAUTH_FINAL)) {
+          // we're back from OAuth, check auth status
+          setTimeout(async () => {
+            const authed = await waitForAuth();
+            if (authed) {
+              const latest = await fetchMe();
+              setMe(latest);
+              // clean up URL
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+          }, 1000);
+        }
+      }
+    })();
+  }, []);
 
   const Authenticated = () => (
     <View style={{ width: '100%', alignItems: 'center' }}>
