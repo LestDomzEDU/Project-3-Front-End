@@ -10,6 +10,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import OAuthScreen from "./OAuthScreen";
+import { useAuth } from "../context/AuthContext";
 
 const PALETTE = {
   bg: "#FFFFFF",
@@ -22,8 +24,12 @@ const PALETTE = {
 };
 
 export default function SettingsScreen() {
+  const { me, setMe, refresh } = useAuth();
   const navigation = useNavigation();
-
+  React.useEffect(() => {
+    // optional: refresh when this screen mounts
+    refresh();
+  }, [refresh]);
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to log out?", [
       { text: "Cancel", style: "cancel" },
@@ -37,16 +43,16 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Profile */}
-      <View style={styles.profileHeader}>
-        <Image
-          source={require("../../assets/user_icon.png")}
-          style={styles.avatar}
-        />
-        <View>
-          <Text style={styles.userName}>John Doe</Text>
-          <Text style={styles.userEmail}>johndoe@email.com</Text>
-        </View>
+      <View style={{ alignItems: "center", marginTop: 20 }}>
+        {me?.avatar_url ? (
+          <Image
+            source={{ uri: me.avatar_url }}
+            style={{ width: 96, height: 96, borderRadius: 48, marginBottom: 8 }}
+          />
+        ) : null}
+        <Text style={styles.sectionTitle}>
+          {me?.name || me?.login || "No Name"}
+        </Text>
       </View>
 
       <Text style={styles.sectionTitle}>Preferences</Text>
