@@ -79,6 +79,8 @@ const SelectField: React.FC<SelectFieldProps> = ({
 
 export default function ProfileIntake() {
   const { me } = useAuth(); // me may be null until auth finishes
+  // console.log("Auth user me:", me);
+
   const navigation = useNavigation() as NavigationProp<RootNavParamList>;
 
   // numeric states + text mirrors for editing
@@ -159,6 +161,8 @@ export default function ProfileIntake() {
   //   console.log("Profile submitted:", profile);
   //   navigation.navigate("Tabs");
   // }
+
+  //Takes me back to dashboard
   function dashboardButton() {
     navigation.navigate("Tabs");
   }
@@ -182,6 +186,7 @@ export default function ProfileIntake() {
           "No studentId available from auth context; using fallback placeholder. Replace with real id."
         );
       }
+      console.log("Using studentId:", studentId);
 
       // 2) Map UI → backend StudentPreference fields + enums
       const prefPayload: any = {
