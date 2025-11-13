@@ -52,48 +52,14 @@ export default function OAuthScreen() {
     return null;
   };
 
-  // GitHub (seamless in-app WebView on native, popup on web)
+  // GitHub (seamless in-app WebView on native, redirect on web)
   const startLoginGithub = () => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      // On web, open OAuth in a popup window and monitor it
+      // on we we redirect
       setLoading(true);
-      const popup = window.open(
-        API.LOGIN_GITHUB,
-        'github-oauth',
-        'width=500,height=600,scrollbars=yes,resizable=yes'
-      );
-      
-      // Check if popup was blocked
-      if (!popup || popup.closed || typeof popup.closed === 'undefined') {
-        Alert.alert('Popup blocked', 'Please allow popups for this site to sign in with GitHub.');
-        setLoading(false);
-        return;
-      }
-      
-      const checkPopup = setInterval(async () => {
-        if (!popup || popup.closed) {
-          clearInterval(checkPopup);
-          setLoading(false);
-          // setting the me state to the latest user data
-          setTimeout(async () => {
-            const authed = await waitForAuth(15000);
-            if (authed) {
-              const latest = await fetchMe();
-              setMe(latest);
-            }
-          }, 500);
-          return;
-        }
-      }, 500);
-      
-      // timeout after 5 minutes
-      setTimeout(() => {
-        clearInterval(checkPopup);
-        if (popup && !popup.closed) {
-          popup.close();
-        }
-        setLoading(false);
-      }, 300000);
+      // storing that we're initiating OAuth so we know to check on return
+      sessionStorage.setItem('oauth_in_progress', 'github');
+      window.location.href = API.LOGIN_GITHUB;
     } else if (Platform.OS !== 'web') {
       setLoginUrl(API.LOGIN_GITHUB);
       setShowWeb(true);
@@ -106,43 +72,9 @@ export default function OAuthScreen() {
       setLoading(true);
       const url = API.LOGIN_GOOGLE;
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        // on web, open OAuth in a popup window and monitor it
-        const popup = window.open(
-          url,
-          'google-oauth',
-          'width=500,height=600,scrollbars=yes,resizable=yes'
-        );
-        
-        // check if popup was blocked
-        if (!popup || popup.closed || typeof popup.closed === 'undefined') {
-          Alert.alert('Popup blocked', 'Please allow popups for this site to sign in with Google.');
-          setLoading(false);
-          return;
-        }
-        
-        const checkPopup = setInterval(async () => {
-          if (!popup || popup.closed) {
-            clearInterval(checkPopup);
-            setLoading(false);
-            // setting the me state to the latest user data
-            setTimeout(async () => {
-              const authed = await waitForAuth(15000);
-              if (authed) {
-                navigation.navigate('GoogleWelcome');
-                googleFreshNeeded.current = false;
-              }
-            }, 500);
-            return;
-          }
-        }, 500);
-        
-        setTimeout(() => {
-          clearInterval(checkPopup);
-          if (popup && !popup.closed) {
-            popup.close();
-          }
-          setLoading(false);
-        }, 300000);
+        // on web
+        sessionStorage.setItem('oauth_in_progress', 'google');
+        window.location.href = url;
       } else {
         await WebBrowser.openAuthSessionAsync(url, API.OAUTH_FINAL);
         const authed = await waitForAuth();
@@ -196,17 +128,36 @@ export default function OAuthScreen() {
       // on web, check if we're coming back from OAuth callback
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         const url = window.location.href;
-        if (url.includes('/oauth2/final') || url.includes(API.OAUTH_FINAL)) {
+        const oauthProvider = sessionStorage.getItem('oauth_in_progress');
+        
+        if (url.includes('/oauth2/final') || url.includes(API.OAUTH_FINAL) || oauthProvider) {
           // we're back from OAuth, check auth status
+          setLoading(true);
+          sessionStorage.removeItem('oauth_in_progress');
+          
+          // cookie wait
           setTimeout(async () => {
-            const authed = await waitForAuth();
+            const authed = await waitForAuth(20000);
+            setLoading(false);
+            
             if (authed) {
               const latest = await fetchMe();
               setMe(latest);
+              
               // clean up URL
-              window.history.replaceState({}, document.title, window.location.pathname);
+              const cleanUrl = window.location.pathname.split('?')[0];
+              window.history.replaceState({}, document.title, cleanUrl);
+              
+              // navigate to appropriate screen based on provider
+              if (oauthProvider === 'google') {
+                navigation.navigate('GoogleWelcome');
+                googleFreshNeeded.current = false;
+              }
+              // github stays on this screen showing authenticated state
+            } else {
+              Alert.alert('Sign-in', 'Could not verify sign-in. Please try again.');
             }
-          }, 1000);
+          }, 1500);
         }
       }
     })();
