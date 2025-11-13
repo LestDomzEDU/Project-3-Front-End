@@ -1,9 +1,18 @@
 import * as React from 'react';
-import { View, Text, StyleSheet, Button, ActivityIndicator, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, Button, ActivityIndicator, Alert, Image, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { WebView } from 'react-native-webview';
 import * as WebBrowser from 'expo-web-browser';
 import API from '../lib/api';
+
+// check if WebView is available
+let WebView = null;
+if (Platform.OS !== 'web') {
+  try {
+    WebView = require('react-native-webview').WebView;
+  } catch (e) {
+    console.warn('WebView not available:', e);
+  }
+}
 
 export default function OAuthScreen() {
   const navigation = useNavigation();
@@ -45,24 +54,36 @@ export default function OAuthScreen() {
 
   // GitHub (seamless in-app WebView)
   const startLoginGithub = () => {
-    setLoginUrl(API.LOGIN_GITHUB);
-    setShowWeb(true);
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      // if web, redirect directly to GitHub OAuth
+      window.location.href = API.LOGIN_GITHUB;
+    } else if (Platform.OS !== 'web') {
+      setLoginUrl(API.LOGIN_GITHUB);
+      setShowWeb(true);
+    }
   };
 
   // Google (secure Custom Tab → closes on /oauth2/final → wait for cookie → welcome page)
   const startLoginGoogle = async () => {
     try {
       setLoading(true);
-      const url = googleFreshNeeded.current ? API.LOGIN_GOOGLE_FRESH : API.LOGIN_GOOGLE;
-      await WebBrowser.openAuthSessionAsync(url, API.OAUTH_FINAL);
-      const authed = await waitForAuth();
-      if (!authed) {
-        Alert.alert('Sign-in', 'Still finishing sign-in… trying again.');
-        const retry = await waitForAuth(5000);
-        if (!retry) throw new Error('Could not verify sign-in.');
+      const url = API.LOGIN_GOOGLE;
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        // if web, redirect directly to Google OAuth
+        // same code as before just adding it to the web version
+        window.location.href = url;
+        return;
+      } else {
+        await WebBrowser.openAuthSessionAsync(url, API.OAUTH_FINAL);
+        const authed = await waitForAuth();
+        if (!authed) {
+          Alert.alert('Sign-in', 'Still finishing sign-in… trying again.');
+          const retry = await waitForAuth(5000);
+          if (!retry) throw new Error('Could not verify sign-in.');
+        }
+        navigation.navigate('GoogleWelcome');
+        googleFreshNeeded.current = false;
       }
-      navigation.navigate('GoogleWelcome');
-      googleFreshNeeded.current = false;
     } catch (e) {
       Alert.alert('Google Sign-in failed', String(e));
     } finally {
@@ -129,7 +150,7 @@ export default function OAuthScreen() {
     <View style={styles.container}>
       {me?.authenticated ? <Authenticated /> : <Unauthenticated />}
 
-      {showWeb && loginUrl ? (
+      {showWeb && loginUrl && WebView ? (
         <View style={{ flex: 1, width: '100%', marginTop: 12 }}>
           <WebView
             key={loginUrl}
@@ -139,6 +160,26 @@ export default function OAuthScreen() {
             renderLoading={() => <ActivityIndicator style={{ marginTop: 20 }} />}
             sharedCookiesEnabled
             thirdPartyCookiesEnabled
+          />
+        </View>
+      ) : null}
+      {Platform.OS === 'web' && showWeb && loginUrl ? (
+        <View style={{ flex: 1, width: '100%', marginTop: 12 }}>
+          <iframe
+            src={loginUrl}
+            style={{ width: '100%', height: '100%', border: 'none' }}
+            onLoad={() => {
+              // this is checking if the iframe navigated to the OAuth final URL
+              setTimeout(() => {
+                waitForAuth().then((authed) => {
+                  if (authed) {
+                    setShowWeb(false);
+                    setLoginUrl(null);
+                    fetchMe().then(setMe);
+                  }
+                });
+              }, 2000);
+            }}
           />
         </View>
       ) : null}
