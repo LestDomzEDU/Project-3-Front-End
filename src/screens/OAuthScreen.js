@@ -47,9 +47,10 @@ export default function OAuthScreen() {
     try {
       const res = await fetch(API.ME, { credentials: 'include' });
       const data = await res.json();
+      
       if (data?.authenticated) {
         const userId = data.userId || data.id;
-        console.log('User signed in - User ID:', userId);
+        console.log('User ID:', userId);
       }
       setMe(data);
     } catch (e) {
@@ -65,6 +66,20 @@ export default function OAuthScreen() {
       await finalize();
       setLoading(false);
     }
+  };
+
+  const onShouldStartLoadWithRequest = (request) => {
+    const url = request?.url || '';
+    if (url.startsWith(API.OAUTH_FINAL)) {
+      // Don't let WebView load this, we'll handle it
+      setShowWeb(false);
+      setLoading(true);
+      finalize().then(() => {
+        setLoading(false);
+      });
+      return false; // Prevent WebView from loading
+    }
+    return true; // Allow other URLs to load
   };
 
 
@@ -112,9 +127,10 @@ export default function OAuthScreen() {
             // Make it truly fresh every time:
             incognito={true}
             cacheEnabled={false}
-            sharedCookiesEnabled={false}
-            thirdPartyCookiesEnabled={false}
+            sharedCookiesEnabled={true}  // Enable for Android cookie sharing
+            thirdPartyCookiesEnabled={true}  // Enable for Android
             onNavigationStateChange={onWebNav}
+            onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}  // Android-specific handler
             startInLoadingState
           />
         </View>
