@@ -37,7 +37,10 @@ export default function OAuthScreen() {
     const start = Date.now();
     while (Date.now() - start < ms) {
       const data = await fetchMe();
-      if (data?.authenticated) return data;
+      if (data?.authenticated) {
+        console.log('User signed in - User ID:', data.userId || data.id);
+        return data;
+      }
       await new Promise(r => setTimeout(r, 350));
     }
     return null;
@@ -81,6 +84,9 @@ export default function OAuthScreen() {
       if (!authed) await waitForAuth(5000);
       // Keep GitHub behavior (stay on this screen showing the signed-in panel)
       const latest = await fetchMe();
+      if (latest?.authenticated) {
+        console.log('User signed in - User ID:', latest.userId || latest.id);
+      }
       setMe(latest);
     }
   };
@@ -98,7 +104,15 @@ export default function OAuthScreen() {
     }
   };
 
-  React.useEffect(() => { (async () => setMe(await fetchMe()))(); }, []);
+  React.useEffect(() => { 
+    (async () => {
+      const meData = await fetchMe();
+      if (meData?.authenticated) {
+        console.log('User signed in - User ID:', meData.userId || meData.id);
+      }
+      setMe(meData);
+    })();
+  }, []);
 
   const Authenticated = () => (
     <View style={{ width: '100%', alignItems: 'center' }}>

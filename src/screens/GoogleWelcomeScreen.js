@@ -12,6 +12,9 @@ export default function GoogleWelcomeScreen() {
     try {
       const res = await fetch(API.ME, { credentials: 'include' });
       const data = await res.json();
+      if (data?.authenticated) {
+        console.log('User signed in - User ID:', data.userId || data.id);
+      }
       setMe(data);
     } catch (e) {
       Alert.alert('Error', String(e));
