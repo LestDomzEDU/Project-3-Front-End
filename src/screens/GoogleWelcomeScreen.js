@@ -13,7 +13,8 @@ export default function GoogleWelcomeScreen() {
       const res = await fetch(API.ME, { credentials: 'include' });
       const data = await res.json();
       if (data?.authenticated) {
-        console.log('User signed in - User ID:', data.userId || data.id);
+        const userId = data.userId || data.id;
+        console.log('User signed in - User ID:', userId);
       }
       setMe(data);
     } catch (e) {
