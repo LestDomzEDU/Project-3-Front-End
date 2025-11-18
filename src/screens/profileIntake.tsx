@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NavigationProp } from "@react-navigation/native";
+
 type RootNavParamList = {
   Tabs: undefined;
   [key: string]: object | undefined;
@@ -77,13 +78,11 @@ const SelectField: React.FC<SelectFieldProps> = ({
 export default function ProfileIntake() {
   const navigation = useNavigation() as NavigationProp<RootNavParamList>;
 
-  // numeric states + text mirrors for editing
   const [budget, setBudget] = React.useState<number>(30000);
   const [budgetText, setBudgetText] = React.useState<string>(String(30000));
   const [gpa, setGpa] = React.useState<number>(3.5);
   const [gpaText, setGpaText] = React.useState<string>(String(3.5));
 
-  // other form state...
   const [country, setCountry] = React.useState<string | null>(null);
   const [applyYear, setApplyYear] = React.useState<string>("2026");
   const [gradDate, setGradDate] = React.useState<string>("");
@@ -108,53 +107,31 @@ export default function ProfileIntake() {
   const timeOptions = ["Full-time", "Part-time"];
   const formatOptions = ["In person", "Hybrid", "Online"];
 
-  // When running under Jest tests, render a simplified version that avoids
-  // native modal/keyboard/scroll behaviour which can be problematic in
-  // the test renderer environment. This keeps tests fast and stable while
-  // preserving full UI at runtime.
-  const isTest = typeof process !== "undefined" && !!process.env.JEST_WORKER_ID;
-  if (isTest) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Profile Intake</Text>
-        <Text style={styles.subtitle}>
-          Tell us about your application preferences
-        </Text>
-        <View style={styles.field}>
-          <Text style={styles.label}>Budget (USD)</Text>
-          <TextInput
-            accessibilityLabel="Budget (USD)"
-            style={styles.input}
-            value={budgetText}
-            onChangeText={setBudgetText}
-          />
-        </View>
-        <Pressable
-          style={styles.button}
-          onPress={() => navigation.navigate("Tabs")}
-        >
-          <Text style={styles.buttonText}>Save profile</Text>
-        </Pressable>
-      </View>
-    );
-  }
-
-  function handleSubmit() {
-    // Make sure we parse the latest text fields before submit:
+  const handleSubmit = () => {
     const parsedBudget = parseFloat(budgetText);
     const parsedGpa = parseFloat(gpaText);
+
     setBudget(Number.isFinite(parsedBudget) ? parsedBudget : 0);
     setGpa(Number.isFinite(parsedGpa) ? parsedGpa : 0);
-    // use the numeric values (or read them from budget/gpa after setState if needed)
+
     const profile = {
       country,
       budget: Number.isFinite(parsedBudget) ? parsedBudget : 0,
-      /* ... other fields ... */
       gpa: Number.isFinite(parsedGpa) ? parsedGpa : 0,
+      applyYear,
+      gradDate,
+      isPrivate,
+      stateLocation,
+      major,
+      capstone,
+      timeType,
+      format,
+      gre,
     };
-    console.log("Profile submitted:", profile);
-    navigation.navigate("Tabs");
-  }
+
+    console.log("Saved preferences:", profile);
+    navigation.navigate("Tabs" as never); // Go to Dashboard
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -166,7 +143,6 @@ export default function ProfileIntake() {
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="always"
-          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "none"}
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.title}>Profile Intake</Text>
@@ -175,7 +151,7 @@ export default function ProfileIntake() {
           </Text>
 
           <SelectField
-            label="Target country"
+            label="Target Country"
             value={country}
             options={countries}
             onChange={setCountry}
@@ -185,34 +161,32 @@ export default function ProfileIntake() {
             <Text style={styles.label}>Budget (USD)</Text>
             <TextInput
               style={styles.input}
-              keyboardType={Platform.OS === "ios" ? "number-pad" : "numeric"}
+              keyboardType="numeric"
               value={budgetText}
               onChangeText={setBudgetText}
               onBlur={() => {
                 const n = parseFloat(budgetText);
                 const final = Number.isFinite(n) ? n : 0;
                 setBudget(final);
-                setBudgetText(String(final)); // normalize display
+                setBudgetText(String(final));
               }}
-              returnKeyType="done"
             />
           </View>
 
           <SelectField
-            label="School year to apply"
+            label="School Year to Apply"
             value={applyYear}
             options={years}
             onChange={setApplyYear}
           />
 
           <View style={styles.field}>
-            <Text style={styles.label}>Expected graduation date</Text>
+            <Text style={styles.label}>Expected Graduation Date</Text>
             <TextInput
               style={styles.input}
               placeholder="YYYY-MM-DD"
               value={gradDate}
               onChangeText={setGradDate}
-              returnKeyType="done"
             />
           </View>
 
@@ -226,7 +200,7 @@ export default function ProfileIntake() {
           />
 
           <SelectField
-            label="Location state"
+            label="Location State"
             value={stateLocation}
             options={states}
             onChange={setStateLocation}
@@ -239,12 +213,11 @@ export default function ProfileIntake() {
               placeholder="e.g., Computer Science"
               value={major}
               onChangeText={setMajor}
-              returnKeyType="done"
             />
           </View>
 
           <View style={styles.inlineField}>
-            <Text style={styles.label}>Capstone required?</Text>
+            <Text style={styles.label}>Capstone Required?</Text>
             <Switch value={capstone} onValueChange={setCapstone} />
           </View>
 
@@ -256,7 +229,7 @@ export default function ProfileIntake() {
           />
 
           <SelectField
-            label="In person or Hybrid"
+            label="Program Format"
             value={format}
             options={formatOptions}
             onChange={setFormat}
@@ -275,18 +248,18 @@ export default function ProfileIntake() {
                 setGpa(final);
                 setGpaText(String(final));
               }}
-              returnKeyType="done"
             />
           </View>
 
           <Pressable style={styles.button} onPress={handleSubmit}>
-            <Text style={styles.buttonText}>Save profile</Text>
+            <Text style={styles.buttonText}>Save Preferences</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -328,12 +301,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 20,
   },
   buttonText: {
     color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   select: {
     borderWidth: 1,
@@ -373,6 +346,3 @@ const styles = StyleSheet.create({
   modalClose: { marginTop: 8, alignSelf: "flex-end" },
   modalCloseText: { color: "#007AFF", fontWeight: "700" },
 });
-{
-  /* ... keep SelectField styles as you have them ... */
-}

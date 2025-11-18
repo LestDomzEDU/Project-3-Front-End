@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, Text, StyleSheet, Button, ActivityIndicator, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { WebView } from 'react-native-webview';
 import * as WebBrowser from 'expo-web-browser';
@@ -10,149 +10,108 @@ export default function OAuthScreen() {
   const [me, setMe] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
 
-  // GitHub in-app WebView
+  // In-app WebView for provider login (fully incognito)
   const [showWeb, setShowWeb] = React.useState(false);
   const [loginUrl, setLoginUrl] = React.useState(null);
+  const [webKey, setWebKey] = React.useState(0); // force a fresh WebView instance
 
-  // Clear server session once per app boot (forces a real login first time)
-  const booted = React.useRef(false);
-  const googleFreshNeeded = React.useRef(true); // only first Google login after boot
+  // Always require explicit login: clear app session on mount
   React.useEffect(() => {
     (async () => {
-      if (!booted.current) {
-        booted.current = true;
-        try { await fetch(API.LOGOUT, { method: 'POST', credentials: 'include' }); } catch {}
-        await fetchMe();
-      }
-    })();
-  }, []);
-
-  const fetchMe = async () => {
-    const res = await fetch(API.ME, { credentials: 'include' });
-    return res.json().catch(() => ({ authenticated: false }));
-  };
-
-  // Poll /api/me until authenticated, or timeout
-  const waitForAuth = async (ms = 10000) => {
-    const start = Date.now();
-    while (Date.now() - start < ms) {
-      const data = await fetchMe();
-      if (data?.authenticated) {
-        console.log('User signed in - User ID:', data.userId || data.id);
-        return data;
-      }
-      await new Promise(r => setTimeout(r, 350));
-    }
-    return null;
-  };
-
-  // GitHub (seamless in-app WebView)
-  const startLoginGithub = () => {
-    setLoginUrl(API.LOGIN_GITHUB);
-    setShowWeb(true);
-  };
-
-  // Google (secure Custom Tab → closes on /oauth2/final → wait for cookie → welcome page)
-  const startLoginGoogle = async () => {
-    try {
-      setLoading(true);
-      const url = googleFreshNeeded.current ? API.LOGIN_GOOGLE_FRESH : API.LOGIN_GOOGLE;
-      await WebBrowser.openAuthSessionAsync(url, API.OAUTH_FINAL);
-      const authed = await waitForAuth();
-      if (!authed) {
-        Alert.alert('Sign-in', 'Still finishing sign-in… trying again.');
-        const retry = await waitForAuth(5000);
-        if (!retry) throw new Error('Could not verify sign-in.');
-      }
-      navigation.navigate('GoogleWelcome');
-      googleFreshNeeded.current = false;
-    } catch (e) {
-      Alert.alert('Google Sign-in failed', String(e));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onNavChange = async (event) => {
-    const url = event?.url || '';
-    if (url.startsWith(API.OAUTH_FINAL) ||
-        url.startsWith(API.ME) ||
-        url === `${API.BASE}/` || url.startsWith(`${API.BASE}/?`)) {
+      try { await fetch(API.LOGOUT, { method: 'POST', credentials: 'include' }); } catch (e) {}
+      setMe(null);
       setShowWeb(false);
       setLoginUrl(null);
-      const authed = await waitForAuth();
-      if (!authed) await waitForAuth(5000);
-      // Keep GitHub behavior (stay on this screen showing the signed-in panel)
-      const latest = await fetchMe();
-      if (latest?.authenticated) {
-        console.log('User signed in - User ID:', latest.userId || latest.id);
-      }
-      setMe(latest);
+      setWebKey((k) => k + 1);
+    })();
+  }, []);
+
+  const startLogin = (provider) => {
+    // Force the provider to prompt account selection / login each time
+    const base = provider === 'github' ? API.LOGIN_GITHUB : API.LOGIN_GOOGLE;
+    const forced = provider === 'github'
+      ? `${base}?prompt=login`
+      : `${base}?prompt=select_account`;
+
+    setLoginUrl(forced);
+    setShowWeb(true);
+    setWebKey((k) => k + 1); // ensure no cookie reuse
+  };
+
+  const finalize = async () => {
+    // Try opening finalizer in system browser to persist cookies if needed
+    try { await WebBrowser.openBrowserAsync(API.OAUTH_FINAL); } catch (e) {}
+    try { await fetch(API.OAUTH_FINAL, { credentials: 'include' }); } catch (e) {}
+
+    // Fetch session/me after OAuth
+    try {
+      const res = await fetch(API.ME, { credentials: 'include' });
+      const data = await res.json();
+      setMe(data);
+    } catch (e) {
+      setMe(null);
     }
   };
 
-  const doLogout = async () => {
-    try {
+  const onWebNav = async (navState) => {
+    const url = navState?.url || '';
+    if (url.startsWith(API.OAUTH_FINAL)) {
+      setShowWeb(false);
       setLoading(true);
-      await fetch(API.LOGOUT, { method: 'POST', credentials: 'include' });
-      setMe({ authenticated: false });
-      googleFreshNeeded.current = true; // next Google login should prompt again
-    } catch (e) {
-      Alert.alert('Logout failed', String(e));
-    } finally {
+      await finalize();
       setLoading(false);
     }
   };
 
-  React.useEffect(() => { 
-    (async () => {
-      const meData = await fetchMe();
-      if (meData?.authenticated) {
-        console.log('User signed in - User ID:', meData.userId || meData.id);
-      }
-      setMe(meData);
-    })();
-  }, []);
 
-  const Authenticated = () => (
-    <View style={{ width: '100%', alignItems: 'center' }}>
-      <Text style={styles.title}>You’re signed in</Text>
-      {!!me?.avatar_url && (
-        <Image source={{ uri: me.avatar_url }} style={{ width: 96, height: 96, borderRadius: 48, marginBottom: 8 }} />
-      )}
-      <Text style={styles.sub}>{me?.login || me?.email || '(no username)'}</Text>
-
-      <View style={{ height: 12 }} />
-      <Button title="Go to app" onPress={() => navigation.navigate('Tabs')} />
-      <View style={{ height: 8 }} />
-      <Button title="Logout" color="#b00020" onPress={doLogout} />
-    </View>
-  );
-
-  const Unauthenticated = () => (
-    <View style={{ width: '100%', alignItems: 'center' }}>
-      <Text style={styles.title}>Sign in</Text>
-      {loading ? <ActivityIndicator style={{ marginVertical: 12 }} /> : null}
-      <Button title="Login with GitHub" onPress={startLoginGithub} />
-      <View style={{ height: 8 }} />
-      <Button title="Login with Google" onPress={startLoginGoogle} />
-    </View>
-  );
+  const onContinue = () => {
+    navigation.navigate('ProfileIntake');
+  };
 
   return (
     <View style={styles.container}>
-      {me?.authenticated ? <Authenticated /> : <Unauthenticated />}
+      {!me && !showWeb && (
+        <View style={{ width: '100%' }}>
+          <Text style={styles.title}>Sign in</Text>
+          <Text style={styles.sub}>Choose a provider to continue.</Text>
+
+          <Pressable onPress={() => startLogin('github')} style={[styles.oauthBtn, styles.github]}>
+            <Text style={styles.oauthBtnText}>Continue with GitHub</Text>
+          </Pressable>
+
+          <Pressable onPress={() => startLogin('google')} style={[styles.oauthBtn, styles.google]}>
+            <Text style={styles.oauthBtnText}>Continue with Google</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {loading ? <ActivityIndicator size="large" style={{ marginTop: 20 }} /> : null}
+
+      {me && !showWeb && (
+        <View style={{ alignItems: 'center', width: '100%' }}>
+          {(me.avatarUrl || me.avatar_url || me.picture) ? (
+            <Image source={{ uri: me.avatarUrl || me.avatar_url || me.picture }} style={styles.avatar} />
+          ) : null}
+          <Text style={styles.title}>You're signed in</Text>
+          {me.name ? <Text style={styles.sub}>{me.name}</Text> : null}
+          <Pressable onPress={onContinue} style={[styles.primaryBtn, { marginTop: 16 }]}>
+            <Text style={styles.primaryBtnText}>Continue</Text>
+          </Pressable>
+        </View>
+      )}
 
       {showWeb && loginUrl ? (
-        <View style={{ flex: 1, width: '100%', marginTop: 12 }}>
+        <View style={{ flex: 1, width: '100%' }}>
           <WebView
-            key={loginUrl}
+            key={webKey}
             source={{ uri: loginUrl }}
-            onNavigationStateChange={onNavChange}
+            // Make it truly fresh every time:
+            incognito={true}
+            cacheEnabled={false}
+            sharedCookiesEnabled={false}
+            thirdPartyCookiesEnabled={false}
+            onNavigationStateChange={onWebNav}
             startInLoadingState
-            renderLoading={() => <ActivityIndicator style={{ marginTop: 20 }} />}
-            sharedCookiesEnabled
-            thirdPartyCookiesEnabled
           />
         </View>
       ) : null}
@@ -162,6 +121,26 @@ export default function OAuthScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', justifyContent: 'flex-start', padding: 20, backgroundColor: '#fff' },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 12, marginTop: 8 },
+  title: { fontSize: 22, fontWeight: '700', marginBottom: 8, marginTop: 8, textAlign: 'center' },
   sub: { fontSize: 16, color: '#333', marginBottom: 4, textAlign: 'center' },
+  avatar: { width: 96, height: 96, borderRadius: 48, marginVertical: 8, backgroundColor: '#eee' },
+  oauthBtn: {
+    marginTop: 12,
+    paddingVertical: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+  github: { backgroundColor: '#111827' },
+  google: { backgroundColor: '#1F2937' },
+  oauthBtnText: { color: '#fff', fontWeight: '700' },
+  primaryBtn: {
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 10,
+    backgroundColor: '#00A7E1',
+    alignItems: 'center',
+  },
+  primaryBtnText: { color: '#fff', fontWeight: '700' },
 });
