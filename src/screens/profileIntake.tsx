@@ -83,13 +83,11 @@ export default function ProfileIntake() {
 
   const navigation = useNavigation() as NavigationProp<RootNavParamList>;
 
-  // numeric states + text mirrors for editing
   const [budget, setBudget] = React.useState<number>(30000);
   const [budgetText, setBudgetText] = React.useState<string>(String(30000));
   const [gpa, setGpa] = React.useState<number>(3.5);
   const [gpaText, setGpaText] = React.useState<string>(String(3.5));
 
-  // other form state...
   const [country, setCountry] = React.useState<string | null>(null);
   const [applyYear, setApplyYear] = React.useState<string>("2026");
   const [gradDate, setGradDate] = React.useState<string>("");
@@ -270,7 +268,6 @@ export default function ProfileIntake() {
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="always"
-          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "none"}
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.title}>Profile Intake</Text>
@@ -279,7 +276,7 @@ export default function ProfileIntake() {
           </Text>
 
           <SelectField
-            label="Target country"
+            label="Target Country"
             value={country}
             options={countries}
             onChange={setCountry}
@@ -289,34 +286,32 @@ export default function ProfileIntake() {
             <Text style={styles.label}>Budget (USD)</Text>
             <TextInput
               style={styles.input}
-              keyboardType={Platform.OS === "ios" ? "number-pad" : "numeric"}
+              keyboardType="numeric"
               value={budgetText}
               onChangeText={setBudgetText}
               onBlur={() => {
                 const n = parseFloat(budgetText);
                 const final = Number.isFinite(n) ? n : 0;
                 setBudget(final);
-                setBudgetText(String(final)); // normalize display
+                setBudgetText(String(final));
               }}
-              returnKeyType="done"
             />
           </View>
 
           <SelectField
-            label="School year to apply"
+            label="School Year to Apply"
             value={applyYear}
             options={years}
             onChange={setApplyYear}
           />
 
           <View style={styles.field}>
-            <Text style={styles.label}>Expected graduation date</Text>
+            <Text style={styles.label}>Expected Graduation Date</Text>
             <TextInput
               style={styles.input}
               placeholder="YYYY-MM-DD"
               value={gradDate}
               onChangeText={setGradDate}
-              returnKeyType="done"
             />
           </View>
 
@@ -330,7 +325,7 @@ export default function ProfileIntake() {
           />
 
           <SelectField
-            label="Location state"
+            label="Location State"
             value={stateLocation}
             options={states}
             onChange={setStateLocation}
@@ -343,12 +338,11 @@ export default function ProfileIntake() {
               placeholder="e.g., Computer Science"
               value={major}
               onChangeText={setMajor}
-              returnKeyType="done"
             />
           </View>
 
           <View style={styles.inlineField}>
-            <Text style={styles.label}>Capstone required?</Text>
+            <Text style={styles.label}>Capstone Required?</Text>
             <Switch value={capstone} onValueChange={setCapstone} />
           </View>
 
@@ -360,7 +354,7 @@ export default function ProfileIntake() {
           />
 
           <SelectField
-            label="In person or Hybrid"
+            label="Program Format"
             value={format}
             options={formatOptions}
             onChange={setFormat}
@@ -379,7 +373,6 @@ export default function ProfileIntake() {
                 setGpa(final);
                 setGpaText(String(final));
               }}
-              returnKeyType="done"
             />
           </View>
 
@@ -406,6 +399,7 @@ export default function ProfileIntake() {
     </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -447,12 +441,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 20,
   },
   buttonText: {
     color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   select: {
     borderWidth: 1,
@@ -492,6 +486,3 @@ const styles = StyleSheet.create({
   modalClose: { marginTop: 8, alignSelf: "flex-end" },
   modalCloseText: { color: "#007AFF", fontWeight: "700" },
 });
-{
-  /* ... keep SelectField styles as you have them ... */
-}
