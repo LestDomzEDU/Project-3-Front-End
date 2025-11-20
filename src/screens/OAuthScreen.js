@@ -86,8 +86,13 @@ export default function OAuthScreen() {
     try {
       const res = await fetch(API.ME, { credentials: "include" });
       const data = await res.json();
-      setMe(data || null);
-    } catch {
+      
+      if (data?.authenticated) {
+        const userId = data.userId || data.id;
+        console.log('User ID:', userId);
+      }
+      setMe(data);
+    } catch (e) {
       setMe(null);
     }
   };
@@ -111,6 +116,21 @@ export default function OAuthScreen() {
     }
     return true;
   };
+
+  const onShouldStartLoadWithRequest = (request) => {
+    const url = request?.url || '';
+    if (url.startsWith(API.OAUTH_FINAL)) {
+      // Don't let WebView load this, we'll handle it
+      setShowWeb(false);
+      setLoading(true);
+      finalize().then(() => {
+        setLoading(false);
+      });
+      return false; // Prevent WebView from loading
+    }
+    return true; // Allow other URLs to load
+  };
+
 
   const onContinue = () => {
     navigation.navigate("ProfileIntake");
@@ -185,12 +205,10 @@ export default function OAuthScreen() {
             // Keep state isolated each time
             incognito
             cacheEnabled={false}
-            // Enable cookie sharing so your API session persists in fetch()
-            sharedCookiesEnabled
-            thirdPartyCookiesEnabled
-            // Intercept redirects to the finalizer
-            onShouldStartLoadWithRequest={onShouldStart}
-            onNavigationStateChange={(navState) => setLastUrl(navState?.url)}
+            sharedCookiesEnabled={true}  // Enable for Android cookie sharing
+            thirdPartyCookiesEnabled={true}  // Enable for Android
+            onNavigationStateChange={onWebNav}
+            onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}  // Android-specific handler
             startInLoadingState
             originWhitelist={["*"]}
             // Prevent zoom bounces on iOS
