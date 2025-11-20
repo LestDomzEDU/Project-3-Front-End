@@ -47,6 +47,13 @@ export default function OAuthScreen() {
     try {
       const res = await fetch(API.ME, { credentials: 'include' });
       const data = await res.json();
+      
+      // Log user ID after successful login
+      if (data?.authenticated) {
+        const userId = data.userId || data.id;
+        console.log('UserId:', userId);
+      }
+      
       setMe(data);
     } catch (e) {
       setMe(null);
