@@ -23,8 +23,6 @@ const PALETTE = {
   cardBorder: "#DCE8F2",
 };
 
-export default function DashboardScreen({ navigation, route }) {
-  const nav = useNavigation();
 export default function DashboardScreen() {
   const navigation = useNavigation();
   const route = useRoute(); // ✅ provide route so params work
