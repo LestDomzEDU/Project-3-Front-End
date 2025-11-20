@@ -119,11 +119,11 @@ export default function OAuthScreen() {
 
   const onShouldStartLoadWithRequest = (request) => {
     const url = request?.url || '';
-    if (url.startsWith(API.OAUTH_FINAL)) {
+    if (matchFinalizeUrl(url, API.OAUTH_FINAL)) {
       // Don't let WebView load this, we'll handle it
       setShowWeb(false);
       setLoading(true);
-      finalize().then(() => {
+      finalizeInApp().then(() => {
         setLoading(false);
       });
       return false; // Prevent WebView from loading
@@ -207,8 +207,20 @@ export default function OAuthScreen() {
             cacheEnabled={false}
             sharedCookiesEnabled={true}  // Enable for Android cookie sharing
             thirdPartyCookiesEnabled={true}  // Enable for Android
-            onNavigationStateChange={onWebNav}
             onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}  // Android-specific handler
+            onNavigationStateChange={(navState) => {
+              const url = navState?.url || '';
+              setLastUrl(url);
+              if (matchFinalizeUrl(url, API.OAUTH_FINAL)) {
+                setLoading(true);
+                setShowWeb(false);
+                setLoginUrl(null);
+                setTimeout(async () => {
+                  await finalizeInApp();
+                  setLoading(false);
+                }, 0);
+              }
+            }}
             startInLoadingState
             originWhitelist={["*"]}
             // Prevent zoom bounces on iOS
