@@ -10,24 +10,28 @@ import SavedApplicationsScreen from "../screens/SavedApplicationsScreen";
 import ReminderScreen from "../screens/ReminderScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import ProfileIntake from "../screens/profileIntake";
-// (Optional) You have this file — keep it registered if you still use it
 import GoogleWelcomeScreen from "../screens/GoogleWelcomeScreen";
+import LoadingScreen from "../screens/LoadingScreen"; 
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 /**
- * Bottom tabs shown only AFTER onboarding.
- * Do not put ProfileIntake in here so tabs are hidden during intake.
+ * Bottom tabs (visible after onboarding/login)
  */
 function DashboardTabs() {
   return (
     <Tab.Navigator
-      initialRouteName="Home"
-      screenOptions={{ headerShown: false }}
+      initialRouteName="Dashboard"
+      screenOptions={{
+        headerShown: false,
+      }}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Saved Applications" component={SavedApplicationsScreen} />
+      <Tab.Screen
+        name="Saved Applications"
+        component={SavedApplicationsScreen}
+      />
       <Tab.Screen name="Reminders" component={ReminderScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
@@ -35,20 +39,25 @@ function DashboardTabs() {
 }
 
 /**
- * Root stack controls the app flow:
- * Home -> OAuth -> ProfileIntake -> Tabs (Dashboard)
+ * Root stack controls the main app flow:
+ * Home -> OAuth -> Loading -> ProfileIntake -> Tabs (Dashboard)
  */
 export default function RootNavigator() {
   return (
-    <Stack.Navigator initialRouteName="Home" screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      initialRouteName="Home"
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      {/* Entry screen */}
       <Stack.Screen name="Home" component={HomeScreen} />
+
+      {/* OAuth login */}
       <Stack.Screen name="OAuth" component={OAuthScreen} />
+      <Stack.Screen name="Loading" component={LoadingScreen} />
+      <Stack.Screen name="ProfileIntake" component={ProfileIntake} />
       <Stack.Screen name="Tabs" component={DashboardTabs} />
-      <Stack.Screen
-        name="ProfileIntake"
-        component={ProfileIntake}
-        options={{ title: "Profile Intake" }}
-      />
       <Stack.Screen name="GoogleWelcome" component={GoogleWelcomeScreen} />
     </Stack.Navigator>
   );

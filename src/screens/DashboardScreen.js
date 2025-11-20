@@ -23,7 +23,7 @@ const PALETTE = {
   cardBorder: "#DCE8F2",
 };
 
-export default function DashboardScreen({ navigation }) {
+export default function DashboardScreen({ navigation, route }) {
   const nav = useNavigation();
   const [modelsModalVisible, setModelsModalVisible] = useState(false);
   const [selectedCollege, setSelectedCollege] = useState(null);
