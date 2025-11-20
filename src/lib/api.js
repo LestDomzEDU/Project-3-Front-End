@@ -1,17 +1,16 @@
-// src/lib/api.js
-// One source of truth for backend endpoints (Heroku).
+const DEFAULT_BASE = 'https://grad-quest-app-2cac63f2b9b2.herokuapp.com';
 
-const BASE = "https://grad-quest-app-2cac63f2b9b2.herokuapp.com";
+export const API = {
+  BASE: process.env.EXPO_PUBLIC_API_BASE || DEFAULT_BASE,
 
-export default {
-  BASE,
-  // 👉 point GitHub auth to Spring’s OAuth2 authorization endpoint
-  LOGIN_GITHUB: `${BASE}/oauth2/authorization/github`,
-  // Leave Google untouched (ignore if you’re not using it)
-  LOGIN_GOOGLE: `${BASE}/auth/google`,
-  // If your backend exposes a finalize route, keep it here.
-  // (The screen below doesn’t require it, but will try it if present.)
-  OAUTH_FINAL:  `${BASE}/auth/finalize`,
-  ME:           `${BASE}/me`,
-  LOGOUT:       `${BASE}/logout`,
+  // OAuth endpoints
+  get LOGIN_GITHUB() { return `${this.BASE}/oauth2/authorization/github`; },
+  get LOGIN_GOOGLE() { return `${this.BASE}/oauth2/authorization/google`; },
+  get OAUTH_FINAL()  { return `${this.BASE}/oauth2/final`; },
+
+  // Session endpoints
+  get LOGOUT() { return `${this.BASE}/api/logout`; },
+  get ME()     { return `${this.BASE}/api/me`; },
 };
+
+export default API;
