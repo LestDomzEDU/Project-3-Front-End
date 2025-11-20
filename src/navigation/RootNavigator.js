@@ -23,7 +23,7 @@ const Tab = createBottomTabNavigator();
 function DashboardTabs() {
   return (
     <Tab.Navigator
-      initialRouteName="Home"
+      initialRouteName="Dashboard" // ✅ was "Home" which doesn't exist in tabs
       screenOptions={{ headerShown: false }}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />

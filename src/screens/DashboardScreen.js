@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSavedApps } from "../context/SavedAppsContext";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 
 const PALETTE = {
   bg: "#FFFFFF",
@@ -23,8 +23,9 @@ const PALETTE = {
   cardBorder: "#DCE8F2",
 };
 
-export default function DashboardScreen({ navigation }) {
-  const nav = useNavigation();
+export default function DashboardScreen() {
+  const navigation = useNavigation();
+  const route = useRoute(); // ✅ provide route so params work
   const [modelsModalVisible, setModelsModalVisible] = useState(false);
   const [selectedCollege, setSelectedCollege] = useState(null);
   const { savedApps, addSavedApp, removeSavedApp } = useSavedApps();
@@ -48,7 +49,6 @@ export default function DashboardScreen({ navigation }) {
   const renderItem = useCallback(
     ({ item }) => {
       const id = item.id ?? item.schoolId ?? item.name;
-      console.log("Rendering item with id:", id);
       const saved = savedApps.find((a) => a.id === id);
 
       const name =
@@ -63,12 +63,9 @@ export default function DashboardScreen({ navigation }) {
           <Text style={s.sub}>{program}</Text>
 
           <View style={s.actionsRow}>
-            {item.link ? (
-              <Pressable
-                onPress={() => openJobUrl(item.link)}
-                style={s.linkBtn}
-              >
-                <Text style={s.linkBtnText}>View Posting</Text>
+            {website ? (
+              <Pressable onPress={() => openUrl(website)} style={s.linkBtn}>
+                <Text style={s.linkBtnText}>Visit Website</Text>
               </Pressable>
             ) : (
               <Text style={[s.sub, { opacity: 0.7 }]}>No website</Text>
@@ -77,7 +74,8 @@ export default function DashboardScreen({ navigation }) {
             <TouchableOpacity
               onPress={() => {
                 if (saved) {
-                  removeSavedApp(item.id);
+                  // ✅ use the same id we keyed by
+                  removeSavedApp(id);
                 } else {
                   addSavedApp({
                     id,
@@ -124,9 +122,7 @@ export default function DashboardScreen({ navigation }) {
       <View style={s.header}>
         <View style={s.leftGroup}>
           <TouchableOpacity
-            onPress={() =>
-              navigation && navigation.navigate?.("Saved Applications")
-            }
+            onPress={() => navigation.navigate("Saved Applications")}
           >
             <Text style={s.back}>Saved</Text>
           </TouchableOpacity>
@@ -189,9 +185,10 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </View>
       </Modal>
+
       <TouchableOpacity
         style={s.backButton}
-        onPress={() => nav.navigate("Home")}
+        onPress={() => navigation.navigate("Home")}
       >
         <Text style={s.backButtonText}>← Back</Text>
       </TouchableOpacity>
