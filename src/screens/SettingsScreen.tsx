@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, Image, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useAuth } from "../context/AuthContext";
 import API from "../lib/api";
 
 const PALETTE = {
@@ -42,9 +43,9 @@ function pickUsername(me?: AnyObj) {
 }
 
 export default function SettingsScreen() {
+  // ✅ Use the Auth context as the single source of truth
   const { me, setMe, refresh } = useAuth();
   const navigation = useNavigation();
-  const [me, setMe] = React.useState<AnyObj | null>(null);
   const [busy, setBusy] = React.useState(false);
 
   const load = React.useCallback(async () => {
@@ -55,16 +56,13 @@ export default function SettingsScreen() {
     } catch {
       setMe(null);
     }
-  }, []);
-
-  React.useEffect(() => {
-    load();
-  }, [load]);
+  }, [setMe]);
 
   // Refresh whenever the screen gains focus
   useFocusEffect(
     React.useCallback(() => {
       load();
+      return;
     }, [load])
   );
 
@@ -78,14 +76,14 @@ export default function SettingsScreen() {
     } finally {
       setBusy(false);
     }
-    navigation.reset({
+    (navigation as any).reset({
       index: 0,
       routes: [{ name: "Home" as never }],
     } as any);
   };
 
   const onAdjustPreferences = () => {
-    navigation.navigate("ProfileIntake" as never);
+    (navigation as any).navigate("ProfileIntake" as never);
   };
 
   const avatarSrc =
@@ -94,7 +92,7 @@ export default function SettingsScreen() {
   const username = pickUsername(me) || "Unknown User";
 
   return (
-    <SafeAreaView style={s.safe}>
+    <SafeAreaView style={s.container}>
       <View style={s.header}>
         <Text style={s.headerTitle}>Settings</Text>
       </View>
@@ -102,22 +100,18 @@ export default function SettingsScreen() {
       <View style={s.card}>
         <View style={s.profileRow}>
           <Image source={{ uri: avatarSrc }} style={s.avatar} />
-          <View style={{ flex: 1 }}>
-            {/* Display GitHub username in large black text */}
+          <View>
             <Text style={s.username}>@{username}</Text>
+            <Text style={s.subtext}>Signed in</Text>
           </View>
         </View>
-      </View>
 
-      <View style={s.card}>
-        <Text style={s.sectionTitle}>Account</Text>
-
-        <Pressable onPress={onAdjustPreferences} style={s.primaryButton}>
+        <Pressable style={s.primaryButton} onPress={onAdjustPreferences}>
           <Text style={s.primaryButtonText}>Adjust Preferences</Text>
         </Pressable>
 
-        <Pressable onPress={onLogout} style={s.logoutButton}>
-          <Text style={s.logoutText}>{busy ? "Signing out..." : "Sign out"}</Text>
+        <Pressable style={s.logoutButton} onPress={onLogout} disabled={busy}>
+          <Text style={s.logoutText}>{busy ? "Logging out..." : "Log out"}</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -125,8 +119,8 @@ export default function SettingsScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: PALETTE.bg, paddingHorizontal: 16, paddingTop: 8 },
-  header: { paddingVertical: 8 },
+  container: { flex: 1, backgroundColor: PALETTE.bg, paddingHorizontal: 16, paddingVertical: 12 },
+  header: { marginBottom: 8 },
   headerTitle: { fontSize: 24, fontWeight: "800", color: PALETTE.text },
 
   card: {
@@ -141,12 +135,11 @@ const s = StyleSheet.create({
   profileRow: { flexDirection: "row", alignItems: "center" },
   avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: "#eee", marginRight: 12 },
 
-  username: { fontSize: 18, fontWeight: "700", color: "#000" },
-
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: PALETTE.navy, marginBottom: 10 },
+  username: { fontSize: 20, fontWeight: "800", color: PALETTE.text },
+  subtext: { marginTop: 2, color: PALETTE.subtext },
 
   primaryButton: {
-    marginTop: 2,
+    marginTop: 16,
     backgroundColor: PALETTE.primary,
     paddingVertical: 12,
     borderRadius: 10,

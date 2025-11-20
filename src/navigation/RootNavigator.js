@@ -43,7 +43,6 @@ export default function RootNavigator() {
     <Stack.Navigator initialRouteName="Home" screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="OAuth" component={OAuthScreen} />
-      <Stack.Screen name="ProfileIntake" component={ProfileIntake} />
       <Stack.Screen name="Tabs" component={DashboardTabs} />
       <Stack.Screen
         name="ProfileIntake"
