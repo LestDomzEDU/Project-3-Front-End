@@ -4,6 +4,7 @@ import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import RootNavigator from "../src/navigation/RootNavigator";
 import { SavedAppsProvider } from "../src/context/SavedAppsContext";
+import { AuthProvider } from "../src/context/AuthContext";
 
 export default function App() {
   const theme = {
@@ -11,12 +12,14 @@ export default function App() {
     colors: { ...DefaultTheme.colors, background: "#ffffff" },
   };
   return (
-    <SafeAreaProvider>
-      <SavedAppsProvider>
-        <NavigationContainer theme={theme}>
-          <RootNavigator />
-        </NavigationContainer>
-      </SavedAppsProvider>
-    </SafeAreaProvider>
+    <AuthProvider>
+      <SafeAreaProvider>
+        <SavedAppsProvider>
+          <NavigationContainer theme={theme}>
+            <RootNavigator />
+          </NavigationContainer>
+        </SavedAppsProvider>
+      </SafeAreaProvider>
+    </AuthProvider>
   );
 }
