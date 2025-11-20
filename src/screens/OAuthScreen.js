@@ -6,18 +6,40 @@ import {
   Pressable,
   ActivityIndicator,
   Image,
+  Platform,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { WebView } from "react-native-webview";
 import API from "../lib/api";
 
 /**
- * In-app OAuth screen with embedded WebView.
- * - Tapping a provider button reveals an in-app browser panel under the buttons.
- * - We watch navigations; when the URL reaches API.OAUTH_FINAL, we stop loading,
- *   close the WebView, and finalize the session via fetch().
- * - No system browser is opened.
+ * Helper: robust match for the OAuth "finalize" URL.
+ * - Allows query params (e.g., ?code=...&state=...)
+ * - Allows trailing slash
+ * - Compares by origin + prefix of pathname
  */
+function matchFinalizeUrl(url, finalizeBase) {
+  if (!url || !finalizeBase) return false;
+
+  // Loose fallback if URL parsing explodes
+  const loose = (u) =>
+    typeof u === "string" &&
+    (u.toLowerCase().includes("/auth/finalize") ||
+      u.toLowerCase().includes("oauth/final"));
+
+  try {
+    const u = new URL(url);
+    const f = new URL(finalizeBase);
+    // Normalize pathnames (strip trailing slash)
+    const norm = (p) => (p.endsWith("/") ? p.slice(0, -1) : p);
+    const up = norm(u.pathname);
+    const fp = norm(f.pathname);
+    return u.origin === f.origin && up.startsWith(fp);
+  } catch {
+    return loose(url);
+  }
+}
+
 export default function OAuthScreen() {
   const navigation = useNavigation();
 
@@ -28,8 +50,9 @@ export default function OAuthScreen() {
   const [showWeb, setShowWeb] = React.useState(false);
   const [loginUrl, setLoginUrl] = React.useState(null);
   const [webKey, setWebKey] = React.useState(0); // force a fresh instance
+  const [lastUrl, setLastUrl] = React.useState(null); // dev-only display
 
-  // Make sure we start clean (fresh session)
+  // Start from a clean state when this screen mounts
   React.useEffect(() => {
     (async () => {
       try {
@@ -44,7 +67,6 @@ export default function OAuthScreen() {
 
   const startLogin = (provider) => {
     const base = provider === "github" ? API.LOGIN_GITHUB : API.LOGIN_GOOGLE;
-    // Small nudge to always prompt account selection:
     const forced =
       provider === "github"
         ? `${base}?prompt=login`
@@ -53,11 +75,12 @@ export default function OAuthScreen() {
     setLoginUrl(forced);
     setShowWeb(true);
     setWebKey((k) => k + 1);
+    setLastUrl(null);
   };
 
   const finalizeInApp = async () => {
-    // Complete the server-side finalize step and then fetch the user session
     try {
+      // Tell backend to complete the session (exchange code for session/cookie)
       await fetch(API.OAUTH_FINAL, { credentials: "include" });
     } catch {}
     try {
@@ -72,18 +95,19 @@ export default function OAuthScreen() {
   // Intercept navigations inside WebView
   const onShouldStart = (req) => {
     const url = req?.url || "";
-    // When the provider finishes and your backend redirects to the finalizer,
-    // we stop the WebView and finish the flow in-app.
-    if (url.startsWith(API.OAUTH_FINAL)) {
+    setLastUrl(url);
+
+    if (matchFinalizeUrl(url, API.OAUTH_FINAL)) {
       setLoading(true);
+      // Close the webview panel so we finish in-app
       setShowWeb(false);
       setLoginUrl(null);
-      // finalize after a tick so WebView unmounts cleanly
+      // finalize after a tick so WebView unmounts cleanly on iOS
       setTimeout(async () => {
         await finalizeInApp();
         setLoading(false);
       }, 0);
-      return false; // block the WebView from navigating to the final URL
+      return false; // block the WebView from going to the final URL
     }
     return true;
   };
@@ -119,6 +143,14 @@ export default function OAuthScreen() {
             >
               <Text style={styles.oauthBtnText}>Continue with Google</Text>
             </Pressable>
+
+            {/* Dev helper: shows where the WebView is navigating (useful on iOS) */}
+            {__DEV__ && lastUrl ? (
+              <Text style={styles.devUrl} numberOfLines={1}>
+                {Platform.select({ ios: "iOS", android: "Android" })} WebView →{" "}
+                {lastUrl}
+              </Text>
+            ) : null}
           </>
         ) : (
           <View style={{ alignItems: "center", width: "100%" }}>
@@ -150,15 +182,21 @@ export default function OAuthScreen() {
           <WebView
             key={webKey}
             source={{ uri: loginUrl }}
-            // keep state isolated each time
+            // Keep state isolated each time
             incognito
             cacheEnabled={false}
-            // enable cookie sharing so your API session persists in fetch()
+            // Enable cookie sharing so your API session persists in fetch()
             sharedCookiesEnabled
             thirdPartyCookiesEnabled
-            // intercept redirects to the finalizer
+            // Intercept redirects to the finalizer
             onShouldStartLoadWithRequest={onShouldStart}
+            onNavigationStateChange={(navState) => setLastUrl(navState?.url)}
             startInLoadingState
+            originWhitelist={["*"]}
+            // Prevent zoom bounces on iOS
+            bounces={false}
+            // (Optional) Identify as mobile browser if your IdP serves different pages
+            // userAgent="Mozilla/5.0 (Mobile; rv:109.0) Gecko/109.0 Firefox/109.0"
           />
         </View>
       ) : null}
@@ -177,6 +215,11 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 22, fontWeight: "700", marginBottom: 8, marginTop: 8, textAlign: "center" },
   sub: { fontSize: 16, color: "#333", marginBottom: 4, textAlign: "center" },
+  devUrl: {
+    marginTop: 10,
+    fontSize: 12,
+    color: "#6B7280",
+  },
   avatar: { width: 96, height: 96, borderRadius: 48, marginVertical: 8, backgroundColor: "#eee" },
 
   oauthBtn: {
