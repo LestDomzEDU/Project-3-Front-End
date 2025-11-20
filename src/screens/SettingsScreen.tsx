@@ -18,7 +18,8 @@ const PALETTE = {
 type AnyObj = Record<string, any>;
 
 function first<T = string>(...vals: Array<T | undefined | null>) {
-  for (const v of vals) if (v !== undefined && v !== null && String(v).length) return v as T;
+  for (const v of vals)
+    if (v !== undefined && v !== null && String(v).length) return v as T;
   return "" as unknown as T;
 }
 
@@ -52,7 +53,7 @@ export default function SettingsScreen() {
     try {
       const res = await fetch(API.ME, { credentials: "include" });
       const data = await res.json();
-      setMe(data || null);
+      setMe(data);
     } catch {
       setMe(null);
     }
@@ -111,7 +112,9 @@ export default function SettingsScreen() {
         </Pressable>
 
         <Pressable style={s.logoutButton} onPress={onLogout} disabled={busy}>
-          <Text style={s.logoutText}>{busy ? "Logging out..." : "Log out"}</Text>
+          <Text style={s.logoutText}>
+            {busy ? "Logging out..." : "Log out"}
+          </Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -119,7 +122,12 @@ export default function SettingsScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: PALETTE.bg, paddingHorizontal: 16, paddingVertical: 12 },
+  container: {
+    flex: 1,
+    backgroundColor: PALETTE.bg,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
   header: { marginBottom: 8 },
   headerTitle: { fontSize: 24, fontWeight: "800", color: PALETTE.text },
 
@@ -133,7 +141,13 @@ const s = StyleSheet.create({
   },
 
   profileRow: { flexDirection: "row", alignItems: "center" },
-  avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: "#eee", marginRight: 12 },
+  avatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#eee",
+    marginRight: 12,
+  },
 
   username: { fontSize: 20, fontWeight: "800", color: PALETTE.text },
   subtext: { marginTop: 2, color: PALETTE.subtext },
