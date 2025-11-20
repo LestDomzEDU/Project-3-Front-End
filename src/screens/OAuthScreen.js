@@ -12,31 +12,20 @@ import { useNavigation } from "@react-navigation/native";
 import { WebView } from "react-native-webview";
 import API from "../lib/api";
 
-/**
- * Helper: robust match for the OAuth "finalize" URL.
- * - Allows query params (e.g., ?code=...&state=...)
- * - Allows trailing slash
- * - Compares by origin + prefix of pathname
- */
-function matchFinalizeUrl(url, finalizeBase) {
-  if (!url || !finalizeBase) return false;
-
-  // Loose fallback if URL parsing explodes
-  const loose = (u) =>
-    typeof u === "string" &&
-    (u.toLowerCase().includes("/auth/finalize") ||
-      u.toLowerCase().includes("oauth/final"));
-
+// Are we back on our own origin (not still on the auth-start page)?
+function isBackOnApp(url) {
+  if (!url) return false;
   try {
     const u = new URL(url);
-    const f = new URL(finalizeBase);
-    // Normalize pathnames (strip trailing slash)
-    const norm = (p) => (p.endsWith("/") ? p.slice(0, -1) : p);
-    const up = norm(u.pathname);
-    const fp = norm(f.pathname);
-    return u.origin === f.origin && up.startsWith(fp);
+    const b = new URL(API.BASE);
+    const sameOrigin = u.origin === b.origin;
+    const path = u.pathname || "/";
+
+    // still inside the "start" route? (Spring OAuth2)
+    const stillAtAuthStart = path.startsWith("/oauth2/authorization/");
+    return sameOrigin && !stillAtAuthStart;
   } catch {
-    return loose(url);
+    return false;
   }
 }
 
@@ -46,99 +35,73 @@ export default function OAuthScreen() {
   const [me, setMe] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
 
-  // WebView controls
+  // WebView state (GitHub only)
   const [showWeb, setShowWeb] = React.useState(false);
-  const [loginUrl, setLoginUrl] = React.useState(null);
-  const [webKey, setWebKey] = React.useState(0); // force a fresh instance
-  const [lastUrl, setLastUrl] = React.useState(null); // dev-only display
+  const [webKey, setWebKey] = React.useState(0);
+  const [currentUrl, setCurrentUrl] = React.useState(null);
 
-  // Start from a clean state when this screen mounts
+  // Clean slate on mount
   React.useEffect(() => {
     (async () => {
-      try {
-        await fetch(API.LOGOUT, { method: "POST", credentials: "include" });
-      } catch {}
+      try { await fetch(API.LOGOUT, { method: "POST", credentials: "include" }); } catch {}
       setMe(null);
       setShowWeb(false);
-      setLoginUrl(null);
       setWebKey((k) => k + 1);
+      setCurrentUrl(null);
     })();
   }, []);
 
-  const startLogin = (provider) => {
-    const base = provider === "github" ? API.LOGIN_GITHUB : API.LOGIN_GOOGLE;
-    const forced =
-      provider === "github"
-        ? `${base}?prompt=login`
-        : `${base}?prompt=select_account`;
-
-    setLoginUrl(forced);
+  const startGithubLogin = () => {
     setShowWeb(true);
     setWebKey((k) => k + 1);
-    setLastUrl(null);
+    setCurrentUrl(API.LOGIN_GITHUB);
   };
 
-  const finalizeInApp = async () => {
+  // Show Google button again; open in WebView too, but we won't wire post-login for it yet
+  const startGoogleLogin = () => {
+    // Optional: open in the same in-app panel for parity (can remove if you truly want to ignore)
+    if (!API.LOGIN_GOOGLE) return;
+    setShowWeb(true);
+    setWebKey((k) => k + 1);
+    setCurrentUrl(API.LOGIN_GOOGLE);
+  };
+
+  const finalizeAndGoToDashboard = async () => {
+    setLoading(true);
     try {
-      // Tell backend to complete the session (exchange code for session/cookie)
-      await fetch(API.OAUTH_FINAL, { credentials: "include" });
+      // If your backend exposes a finalize endpoint, hit it (harmless if it no-ops)
+      if (API.OAUTH_FINAL) {
+        await fetch(API.OAUTH_FINAL, { credentials: "include" });
+      }
     } catch {}
+
+    let user = null;
     try {
       const res = await fetch(API.ME, { credentials: "include" });
-      const data = await res.json();
-      
-      if (data?.authenticated) {
-        const userId = data.userId || data.id;
-        console.log('User ID:', userId);
-      }
-      setMe(data);
-    } catch (e) {
-      setMe(null);
-    }
+      user = await res.json();
+    } catch {}
+
+    setMe(user || null);
+    setLoading(false);
+
+    // Navigate to Tabs → Dashboard regardless; if user is null, your Settings can still show "Unknown"
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "Tabs", params: { screen: "Dashboard" } }],
+    });
   };
 
-  // Intercept navigations inside WebView
-  const onShouldStart = (req) => {
+  const handleShouldStart = (req) => {
     const url = req?.url || "";
-    setLastUrl(url);
+    setCurrentUrl(url);
 
-    if (matchFinalizeUrl(url, API.OAUTH_FINAL)) {
-      setLoading(true);
-      // Close the webview panel so we finish in-app
+    if (isBackOnApp(url)) {
       setShowWeb(false);
-      setLoginUrl(null);
-      // finalize after a tick so WebView unmounts cleanly on iOS
-      setTimeout(async () => {
-        await finalizeInApp();
-        setLoading(false);
-      }, 0);
-      return false; // block the WebView from going to the final URL
+      // finish in-app after WebView unmounts (iOS quirk)
+      setTimeout(finalizeAndGoToDashboard, 0);
+      return false;
     }
     return true;
-  };
-
-  const onShouldStartLoadWithRequest = (request) => {
-    const url = request?.url || '';
-    if (matchFinalizeUrl(url, API.OAUTH_FINAL)) {
-      // Don't let WebView load this, we'll handle it
-      setShowWeb(false);
-      setLoading(true);
-      finalizeInApp().then(() => {
-        setLoading(false);
-      });
-      return false; // Prevent WebView from loading
-    }
-    return true; // Allow other URLs to load
-  };
-
-
-  const onContinue = () => {
-    navigation.navigate("ProfileIntake");
-  };
-
-  const closeWeb = () => {
-    setShowWeb(false);
-    setLoginUrl(null);
   };
 
   return (
@@ -150,83 +113,57 @@ export default function OAuthScreen() {
             <Text style={styles.title}>Sign in</Text>
             <Text style={styles.sub}>Choose a provider to continue.</Text>
 
-            <Pressable
-              onPress={() => startLogin("github")}
-              style={[styles.oauthBtn, styles.github]}
-            >
+            <Pressable onPress={startGithubLogin} style={[styles.oauthBtn, styles.github]}>
               <Text style={styles.oauthBtnText}>Continue with GitHub</Text>
             </Pressable>
 
-            <Pressable
-              onPress={() => startLogin("google")}
-              style={[styles.oauthBtn, styles.google]}
-            >
+            {/* Restored Google button (opens its URL; no extra handling for now) */}
+            <Pressable onPress={startGoogleLogin} style={[styles.oauthBtn, styles.google]}>
               <Text style={styles.oauthBtnText}>Continue with Google</Text>
             </Pressable>
 
-            {/* Dev helper: shows where the WebView is navigating (useful on iOS) */}
-            {__DEV__ && lastUrl ? (
-              <Text style={styles.devUrl} numberOfLines={1}>
-                {Platform.select({ ios: "iOS", android: "Android" })} WebView →{" "}
-                {lastUrl}
+            {__DEV__ && currentUrl ? (
+              <Text style={styles.devUrl} numberOfLines={2}>
+                {Platform.select({ ios: "iOS", android: "Android" })} WebView → {currentUrl}
               </Text>
             ) : null}
           </>
         ) : (
           <View style={{ alignItems: "center", width: "100%" }}>
-            {(me.avatarUrl || me.avatar_url || me.picture) ? (
+            {(me?.avatarUrl || me?.avatar_url || me?.picture) ? (
               <Image
                 source={{ uri: me.avatarUrl || me.avatar_url || me.picture }}
                 style={styles.avatar}
               />
             ) : null}
             <Text style={styles.title}>You're signed in</Text>
-            {me.name ? <Text style={styles.sub}>{me.name}</Text> : null}
-            <Pressable onPress={onContinue} style={[styles.primaryBtn, { marginTop: 16 }]}>
-              <Text style={styles.primaryBtnText}>Continue</Text>
-            </Pressable>
+            {me?.name ? <Text style={styles.sub}>{me.name}</Text> : null}
           </View>
         )}
       </View>
 
-      {/* Built-in browser panel (appears UNDER the buttons) */}
-      {showWeb && loginUrl ? (
+      {/* Built-in browser (under the buttons) */}
+      {showWeb ? (
         <View style={styles.webPanel}>
           <View style={styles.webPanelHeader}>
             <Text style={styles.webPanelTitle}>Secure sign-in</Text>
-            <Pressable onPress={closeWeb} style={styles.close}>
+            <Pressable onPress={() => setShowWeb(false)} style={styles.close}>
               <Text style={styles.closeText}>Close</Text>
             </Pressable>
           </View>
-
           <WebView
             key={webKey}
-            source={{ uri: loginUrl }}
-            // Keep state isolated each time
+            source={{ uri: currentUrl || API.LOGIN_GITHUB }}
             incognito
             cacheEnabled={false}
-            sharedCookiesEnabled={true}  // Enable for Android cookie sharing
-            thirdPartyCookiesEnabled={true}  // Enable for Android
-            onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}  // Android-specific handler
-            onNavigationStateChange={(navState) => {
-              const url = navState?.url || '';
-              setLastUrl(url);
-              if (matchFinalizeUrl(url, API.OAUTH_FINAL)) {
-                setLoading(true);
-                setShowWeb(false);
-                setLoginUrl(null);
-                setTimeout(async () => {
-                  await finalizeInApp();
-                  setLoading(false);
-                }, 0);
-              }
-            }}
+            // share cookies with fetch() so the session cookie is visible
+            sharedCookiesEnabled
+            thirdPartyCookiesEnabled
+            onShouldStartLoadWithRequest={handleShouldStart}
+            onNavigationStateChange={(s) => setCurrentUrl(s?.url)}
             startInLoadingState
             originWhitelist={["*"]}
-            // Prevent zoom bounces on iOS
             bounces={false}
-            // (Optional) Identify as mobile browser if your IdP serves different pages
-            // userAgent="Mozilla/5.0 (Mobile; rv:109.0) Gecko/109.0 Firefox/109.0"
           />
         </View>
       ) : null}
@@ -237,19 +174,10 @@ export default function OAuthScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    padding: 20,
-    alignItems: "center",
-  },
+  container: { flex: 1, backgroundColor: "#fff", padding: 20, alignItems: "center" },
   title: { fontSize: 22, fontWeight: "700", marginBottom: 8, marginTop: 8, textAlign: "center" },
   sub: { fontSize: 16, color: "#333", marginBottom: 4, textAlign: "center" },
-  devUrl: {
-    marginTop: 10,
-    fontSize: 12,
-    color: "#6B7280",
-  },
+  devUrl: { marginTop: 10, fontSize: 12, color: "#6B7280" },
   avatar: { width: 96, height: 96, borderRadius: 48, marginVertical: 8, backgroundColor: "#eee" },
 
   oauthBtn: {
@@ -264,19 +192,10 @@ const styles = StyleSheet.create({
   google: { backgroundColor: "#1F2937" },
   oauthBtnText: { color: "#fff", fontWeight: "700" },
 
-  primaryBtn: {
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    borderRadius: 10,
-    backgroundColor: "#00A7E1",
-    alignItems: "center",
-  },
-  primaryBtnText: { color: "#fff", fontWeight: "700" },
-
-  // Web panel styles
+  // Web panel
   webPanel: {
     width: "100%",
-    height: 420, // visible area under the buttons
+    height: 420,
     marginTop: 16,
     borderRadius: 12,
     overflow: "hidden",
@@ -294,11 +213,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   webPanelTitle: { fontWeight: "700", color: "#111827" },
-  close: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: "#F3F4F6",
-  },
+  close: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: "#F3F4F6" },
   closeText: { fontWeight: "700", color: "#111827" },
 });

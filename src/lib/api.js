@@ -1,19 +1,17 @@
-// lib/api.js
-import { Platform } from "react-native";
+// src/lib/api.js
+// One source of truth for backend endpoints (Heroku).
 
-const LOCAL_ANDROID = "http://10.0.2.2:3000";
-const LOCAL_IOS = "http://localhost:3000";
-const BASE = __DEV__
-  ? Platform.select({ ios: LOCAL_IOS, android: LOCAL_ANDROID })
-  : "https://your-production-domain.com";
+const BASE = "https://grad-quest-app-2cac63f2b9b2.herokuapp.com";
 
-const API = {
+export default {
   BASE,
-  LOGIN_GITHUB: `${BASE}/auth/github`,
+  // 👉 point GitHub auth to Spring’s OAuth2 authorization endpoint
+  LOGIN_GITHUB: `${BASE}/oauth2/authorization/github`,
+  // Leave Google untouched (ignore if you’re not using it)
   LOGIN_GOOGLE: `${BASE}/auth/google`,
-  OAUTH_FINAL:  `${BASE}/auth/finalize`,   // ← this is the constant used in OAuthScreen.js
+  // If your backend exposes a finalize route, keep it here.
+  // (The screen below doesn’t require it, but will try it if present.)
+  OAUTH_FINAL:  `${BASE}/auth/finalize`,
   ME:           `${BASE}/me`,
   LOGOUT:       `${BASE}/logout`,
 };
-
-export default API;
