@@ -26,6 +26,8 @@ function DashboardTabs() {
       screenOptions={{
         headerShown: false,
       }}
+      initialRouteName="Dashboard" // ✅ was "Home" which doesn't exist in tabs
+      screenOptions={{ headerShown: false }}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen
