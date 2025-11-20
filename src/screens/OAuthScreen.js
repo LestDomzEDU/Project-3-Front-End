@@ -4,21 +4,23 @@ import { useNavigation } from '@react-navigation/native';
 import { WebView } from 'react-native-webview';
 import * as WebBrowser from 'expo-web-browser';
 import API from '../lib/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const TUTORIAL_KEY = 'tutorial:completed';
 
 export default function OAuthScreen() {
   const navigation = useNavigation();
   const [me, setMe] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
 
-  // In-app WebView for provider login (fully incognito)
   const [showWeb, setShowWeb] = React.useState(false);
   const [loginUrl, setLoginUrl] = React.useState(null);
-  const [webKey, setWebKey] = React.useState(0); // force a fresh WebView instance
+  const [webKey, setWebKey] = React.useState(0);
 
-  // Always require explicit login: clear app session on mount
+  // Clear session to force explicit login each time (keeps QA simple)
   React.useEffect(() => {
     (async () => {
-      try { await fetch(API.LOGOUT, { method: 'POST', credentials: 'include' }); } catch (e) {}
+      try { await fetch(API.LOGOUT, { method: 'POST', credentials: 'include' }); } catch {}
       setMe(null);
       setShowWeb(false);
       setLoginUrl(null);
@@ -27,35 +29,22 @@ export default function OAuthScreen() {
   }, []);
 
   const startLogin = (provider) => {
-    // Force the provider to prompt account selection / login each time
     const base = provider === 'github' ? API.LOGIN_GITHUB : API.LOGIN_GOOGLE;
-    const forced = provider === 'github'
-      ? `${base}?prompt=login`
-      : `${base}?prompt=select_account`;
-
+    const forced = provider === 'github' ? `${base}?prompt=login` : `${base}?prompt=select_account`;
     setLoginUrl(forced);
     setShowWeb(true);
-    setWebKey((k) => k + 1); // ensure no cookie reuse
+    setWebKey((k) => k + 1);
   };
 
   const finalize = async () => {
-    // Try opening finalizer in system browser to persist cookies if needed
-    try { await WebBrowser.openBrowserAsync(API.OAUTH_FINAL); } catch (e) {}
-    try { await fetch(API.OAUTH_FINAL, { credentials: 'include' }); } catch (e) {}
+    try { await WebBrowser.openBrowserAsync(API.OAUTH_FINAL); } catch {}
+    try { await fetch(API.OAUTH_FINAL, { credentials: 'include' }); } catch {}
 
-    // Fetch session/me after OAuth
     try {
       const res = await fetch(API.ME, { credentials: 'include' });
       const data = await res.json();
-      
-      // Log user ID after successful login
-      if (data?.authenticated) {
-        const userId = data.userId || data.id;
-        console.log('UserId:', userId);
-      }
-      
       setMe(data);
-    } catch (e) {
+    } catch {
       setMe(null);
     }
   };
@@ -70,8 +59,14 @@ export default function OAuthScreen() {
     }
   };
 
-  const onContinue = () => {
-    navigation.navigate('ProfileIntake');
+  const onContinue = async () => {
+    // Reset tutorial completion on new sign-in (optional; remove if you want to persist across re-logins)
+    try { await AsyncStorage.removeItem(TUTORIAL_KEY); } catch {}
+    // Go straight to Dashboard and start **coachmark** tutorial in locked mode
+    navigation.navigate('Tabs', {
+      screen: 'Dashboard',
+      params: { showTutorial: true },
+    });
   };
 
   return (
@@ -111,8 +106,7 @@ export default function OAuthScreen() {
           <WebView
             key={webKey}
             source={{ uri: loginUrl }}
-            // Make it truly fresh every time:
-            incognito={true}
+            incognito
             cacheEnabled={false}
             sharedCookiesEnabled={false}
             thirdPartyCookiesEnabled={false}
@@ -128,25 +122,15 @@ export default function OAuthScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', justifyContent: 'flex-start', padding: 20, backgroundColor: '#fff' },
   title: { fontSize: 22, fontWeight: '700', marginBottom: 8, marginTop: 8, textAlign: 'center' },
-  sub: { fontSize: 16, color: '#333', marginBottom: 4, textAlign: 'center' },
-  avatar: { width: 96, height: 96, borderRadius: 48, marginVertical: 8, backgroundColor: '#eee' },
+  sub: { fontSize: 14, color: '#6B7280', marginBottom: 12, textAlign: 'center' },
+  avatar: { width: 56, height: 56, borderRadius: 28, marginBottom: 8, backgroundColor: '#eee' },
   oauthBtn: {
-    marginTop: 12,
-    paddingVertical: 14,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    alignItems: 'center',
+    width: '100%', paddingVertical: 14, paddingHorizontal: 18, borderRadius: 10,
+    borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center', marginBottom: 10,
   },
   github: { backgroundColor: '#111827' },
   google: { backgroundColor: '#1F2937' },
   oauthBtnText: { color: '#fff', fontWeight: '700' },
-  primaryBtn: {
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    borderRadius: 10,
-    backgroundColor: '#00A7E1',
-    alignItems: 'center',
-  },
+  primaryBtn: { paddingVertical: 14, paddingHorizontal: 18, borderRadius: 10, backgroundColor: '#00A7E1', alignItems: 'center' },
   primaryBtnText: { color: '#fff', fontWeight: '700' },
 });
