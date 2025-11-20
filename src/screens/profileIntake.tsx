@@ -19,6 +19,7 @@ import { useNavigation } from "@react-navigation/native";
 import type { NavigationProp } from "@react-navigation/native";
 import API from "../lib/api";
 import { useAuth } from "../context/AuthContext";
+import { Alert } from "react-native";
 
 type RootNavParamList = {
   Tabs: undefined | { screen?: string; params?: { topSchools?: any } };
@@ -98,6 +99,7 @@ export default function ProfileIntake() {
   const [timeType, setTimeType] = React.useState<string>("Full-time");
   const [format, setFormat] = React.useState<string>("In person");
   const [gre, setGre] = React.useState<boolean>(false);
+  const [gradDateError, setGradDateError] = React.useState<string | null>(null);
 
   const countries = [
     "United States",
@@ -111,6 +113,22 @@ export default function ProfileIntake() {
   const privateOptions = ["Private", "Public"];
   const timeOptions = ["Full-time", "Part-time"];
   const formatOptions = ["In person", "Hybrid", "Online"];
+
+  function isValidISODate(s: string) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+    const [y, m, d] = s.split("-").map((v) => Number(v));
+    const dt = new Date(y, m - 1, d);
+    if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d)
+      return false;
+
+    const now = new Date();
+    // allow from last year start through next 10 years end
+    const min = new Date(now.getFullYear() - 1, 0, 1);
+    const max = new Date(now.getFullYear() + 10, 11, 31);
+    if (dt < min || dt > max) return false;
+
+    return true;
+  }
 
   // When running under Jest tests, render a simplified version that avoids
   // native modal/keyboard/scroll behaviour which can be problematic in
@@ -243,6 +261,15 @@ export default function ProfileIntake() {
       }
       const topSchools = await topRes.json();
 
+      if (gradDate && !isValidISODate(gradDate)) {
+        Alert.alert(
+          "Invalid graduation date",
+          "Please enter a valid date in YYYY-MM-DD (e.g. 2026-05-15)."
+        );
+        setSubmitting(false);
+        return;
+      }
+
       // 5) Navigate with results into Tabs -> Dashboard
       // Use nested param form to ensure inner tab receives the params
       navigation.navigate("Tabs", {
@@ -311,8 +338,34 @@ export default function ProfileIntake() {
               style={styles.input}
               placeholder="YYYY-MM-DD"
               value={gradDate}
-              onChangeText={setGradDate}
+              onChangeText={(text) => {
+                // allow only digits and hyphen while typing
+                let filtered = text.replace(/[^0-9-]/g, "");
+                if (filtered.length > 10) filtered = filtered.slice(0, 10);
+                setGradDate(filtered);
+                if (gradDateError) setGradDateError(null);
+              }}
+              onBlur={() => {
+                if (!gradDate) {
+                  // empty is acceptable (means "no preference") — clear error
+                  setGradDateError(null);
+                  return;
+                }
+                if (!isValidISODate(gradDate)) {
+                  setGradDateError(
+                    "Enter a valid date in YYYY-MM-DD (real date, within a reasonable range)"
+                  );
+                } else {
+                  setGradDateError(null);
+                }
+              }}
+              returnKeyType="done"
             />
+            {gradDateError ? (
+              <Text style={{ color: "#B00020", marginTop: 6 }}>
+                {gradDateError}
+              </Text>
+            ) : null}
           </View>
 
           <SelectField

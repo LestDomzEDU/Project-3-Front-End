@@ -1,10 +1,13 @@
 // src/context/AuthContext.js
 import React, { createContext, useContext, useState, useCallback } from "react";
 import API from "../lib/api";
+/** @typedef {{ me: any|data, setMe: (me:any|null)=>void, refresh: ()=>Promise<any> }} AuthContextType */
+
+/** @type {React.Context<AuthContextType>} */
 
 const AuthContext = createContext({
   me: null,
-  setMe: () => {},
+  setMe: (_me) => {},
   refresh: async () => {},
 });
 
