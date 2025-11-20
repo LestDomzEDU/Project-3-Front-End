@@ -176,15 +176,12 @@ export default function ProfileIntake() {
       const finalBudget = Number.isFinite(parsedBudget) ? parsedBudget : 0;
       const finalGpa = Number.isFinite(parsedGpa) ? parsedGpa : 0;
 
-      // 1.a Obtain student id from auth context when possible
-      const studentId =
-        me?.id || me?.studentId || me?.sub || me?.login || "current-user-id";
-      if (studentId === "current-user-id") {
-        console.warn(
-          "No studentId available from auth context; using fallback placeholder. Replace with real id."
-        );
+      // 1.a Obtain user id from auth context
+      const userId = me?.userId || me?.id;
+      if (!userId) {
+        throw new Error("User not authenticated. Please log in first.");
       }
-      console.log("Using studentId:", studentId);
+      console.log("Using userId:", userId);
 
       // 2) Map UI → backend StudentPreference fields + enums
       const prefPayload: any = {
@@ -213,9 +210,7 @@ export default function ProfileIntake() {
       };
 
       // 3) Save/Upsert preferences (POST)
-      const saveUrl = `${
-        API.BASE
-      }/api/preferences?studentId=${encodeURIComponent(String(studentId))}`;
+      const saveUrl = `${API.BASE}/api/preferences?userId=${userId}`;
       const saveRes = await fetch(saveUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -231,9 +226,7 @@ export default function ProfileIntake() {
       }
 
       // 4) Fetch top 5 scored schools
-      const topUrl = `${
-        API.BASE
-      }/api/schools/top5?studentId=${encodeURIComponent(String(studentId))}`;
+      const topUrl = `${API.BASE}/api/schools/top5?userId=${userId}`;
       const topRes = await fetch(topUrl, { credentials: "include" });
       if (!topRes.ok) {
         const text = await topRes.text().catch(() => "");
