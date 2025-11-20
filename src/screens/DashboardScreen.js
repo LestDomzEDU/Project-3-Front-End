@@ -1,8 +1,17 @@
 import { useState, useCallback } from "react";
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, Pressable, Linking, } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Modal,
+  Pressable,
+  Linking,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSavedApps } from "../context/SavedAppsContext";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 
 const PALETTE = {
   bg: "#FFFFFF",
@@ -14,79 +23,91 @@ const PALETTE = {
   cardBorder: "#DCE8F2",
 };
 
-export default function DashboardScreen({ navigation }) {
-  const nav = useNavigation(); 
+export default function DashboardScreen() {
+  const navigation = useNavigation();
+  const route = useRoute(); // ✅ provide route so params work
   const [modelsModalVisible, setModelsModalVisible] = useState(false);
   const [selectedCollege, setSelectedCollege] = useState(null);
   const { savedApps, addSavedApp, removeSavedApp } = useSavedApps();
-  const models = [];
 
-  const colleges = [
-    {
-      id: "c1",
-      name: "Georgia Tech",
-      program: "MS Computer Science",
-      urgent: true,
-      link: "https://www.gatech.edu/",
-    },
-    {
-      id: "c2",
-      name: "San Jose State University",
-      program: "MS Data Science",
-      urgent: false,
-      link: "https://www.sjsu.edu/",
-    },
-    {
-      id: "c3",
-      name: "Harvard University",
-      program: "PhD ML",
-      urgent: true,
-      link: "https://www.harvard.edu/",
-    },
-  ];
+  // read results passed in when ProfileIntake navigates:
+  const topSchools = route?.params?.topSchools ?? null;
+
+  const dataToShow =
+    Array.isArray(topSchools) && topSchools.length > 0 ? topSchools : [];
+
+  const openUrl = (url) => {
+    if (!url) return;
+    Linking.openURL(url).catch(() => {});
+  };
+
+  const keyForCollege = useCallback(
+    (item) => String(item.id ?? item.schoolId ?? item.name),
+    []
+  );
 
   const renderItem = useCallback(
     ({ item }) => {
-      const saved = savedApps.find((a) => a.id === item.id);
+      const id = item.id ?? item.schoolId ?? item.name;
+      const saved = savedApps.find((a) => a.id === id);
 
-      const openJobUrl = (url) => {
-        if (!url) return;
-        Linking.openURL(url).catch(() => {});
-      };
+      const name =
+        item.name ?? item.schoolName ?? item.programName ?? "Untitled";
+      const program =
+        item.programName ?? item.program ?? item.programType ?? "Program info";
+      const website = item.websiteUrl ?? item.website ?? item.link ?? null;
 
       return (
         <View style={s.card}>
-          <Text style={s.title}>{item.name}</Text>
-          <Text style={s.sub}>{item.program}</Text>
+          <Text style={s.title}>{name}</Text>
+          <Text style={s.sub}>{program}</Text>
 
           <View style={s.actionsRow}>
-            {item.link ? (
-              <Pressable onPress={() => openJobUrl(item.link)} style={s.linkBtn}>
-                <Text style={s.linkBtnText}>View Posting</Text>
+            {website ? (
+              <Pressable onPress={() => openUrl(website)} style={s.linkBtn}>
+                <Text style={s.linkBtnText}>Visit Website</Text>
               </Pressable>
             ) : (
-              <Text style={[s.sub, { opacity: 0.7 }]}>No direct link</Text>
+              <Text style={[s.sub, { opacity: 0.7 }]}>No website</Text>
             )}
 
             <TouchableOpacity
               onPress={() => {
                 if (saved) {
-                  removeSavedApp(item.id);
+                  // ✅ use the same id we keyed by
+                  removeSavedApp(id);
                 } else {
                   addSavedApp({
-                    id: item.id,
-                    name: item.name,
-                    company: item.program,
-                    urgent: item.urgent,
-                    link: item.link,
+                    id,
+                    name,
+                    company: program,
+                    urgent: !!item.urgent,
+                    link: website,
                   });
                 }
               }}
-              style={saved ? s.removeBtn : s.saveBtn}>
+              style={saved ? s.removeBtn : s.saveBtn}
+            >
               <Text style={saved ? s.removeBtnText : s.saveBtnText}>
                 {saved ? "Remove" : "Save"}
               </Text>
             </TouchableOpacity>
+
+            <Pressable
+              style={[s.modelTrigger, { marginLeft: 8 }]}
+              onPress={() => {
+                setSelectedCollege(item);
+                setModelsModalVisible(true);
+              }}
+            >
+              <Text
+                style={
+                  s.modelTriggerText ?? { color: "#007AFF", fontWeight: "700" }
+                }
+              >
+                Show Models
+              </Text>
+            </Pressable>
           </View>
         </View>
       );
@@ -94,14 +115,15 @@ export default function DashboardScreen({ navigation }) {
     [savedApps, addSavedApp, removeSavedApp]
   );
 
+  const models = []; // leave for now; wire to model data if you add it later
+
   return (
     <SafeAreaView style={s.screen}>
       <View style={s.header}>
         <View style={s.leftGroup}>
           <TouchableOpacity
-            onPress={() =>
-              navigation && navigation.navigate?.("Saved Applications")
-            }>
+            onPress={() => navigation.navigate("Saved Applications")}
+          >
             <Text style={s.back}>Saved</Text>
           </TouchableOpacity>
         </View>
@@ -114,8 +136,8 @@ export default function DashboardScreen({ navigation }) {
 
       <FlatList
         contentContainerStyle={{ padding: 16 }}
-        data={colleges}
-        keyExtractor={(item) => item.id}
+        data={dataToShow}
+        keyExtractor={keyForCollege}
         ListEmptyComponent={
           <Text style={[s.sub, { textAlign: "center", marginTop: 24 }]}>
             No matches yet.
@@ -135,12 +157,16 @@ export default function DashboardScreen({ navigation }) {
             <Text style={s.modalTitle}>Models</Text>
             <Text style={{ marginBottom: 8, color: "#374151" }}>
               {selectedCollege
-                ? `${selectedCollege.name} — ${selectedCollege.program}`
+                ? `${
+                    selectedCollege.name ?? selectedCollege.schoolName ?? ""
+                  } — ${
+                    selectedCollege.programName ?? selectedCollege.program ?? ""
+                  }`
                 : ""}
             </Text>
             <FlatList
               data={models}
-              keyExtractor={(item) => item}
+              keyExtractor={(item) => String(item)}
               renderItem={({ item }) => (
                 <Pressable
                   style={s.modelItem}
@@ -159,7 +185,11 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </View>
       </Modal>
-      <TouchableOpacity style={s.backButton} onPress={() => nav.navigate("Home")}>
+
+      <TouchableOpacity
+        style={s.backButton}
+        onPress={() => navigation.navigate("Home")}
+      >
         <Text style={s.backButtonText}>← Back</Text>
       </TouchableOpacity>
     </SafeAreaView>
@@ -167,9 +197,9 @@ export default function DashboardScreen({ navigation }) {
 }
 
 const s = StyleSheet.create({
-  screen: { 
-    flex: 1, 
-    backgroundColor: PALETTE.bg 
+  screen: {
+    flex: 1,
+    backgroundColor: PALETTE.bg,
   },
   header: {
     paddingHorizontal: 16,
@@ -191,31 +221,31 @@ const s = StyleSheet.create({
     fontSize: 16,
     marginRight: 4,
   },
-  back: { 
-    color: PALETTE.primary, 
-    fontWeight: "700" 
+  back: {
+    color: PALETTE.primary,
+    fontWeight: "700",
   },
-  h1: { 
-    fontSize: 18, 
-    fontWeight: "800", 
-    color: PALETTE.text 
+  h1: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: PALETTE.text,
   },
   backButton: {
-    alignSelf: "flex-start", 
-    marginLeft: 20,          
+    alignSelf: "flex-start",
+    marginLeft: 20,
     marginBottom: 40,
     backgroundColor: PALETTE.primary,
     borderRadius: 10,
     paddingVertical: 14,
     paddingHorizontal: 24,
-    alignItems: "flex-start", 
+    alignItems: "flex-start",
     justifyContent: "center",
   },
   backButtonText: {
     color: "#fff",
     fontWeight: "700",
     fontSize: 16,
-    textAlign: "left",       
+    textAlign: "left",
   },
   card: {
     backgroundColor: "#fff",
@@ -230,14 +260,14 @@ const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     elevation: 1,
   },
-  title: { 
-    fontSize: 16, 
-    fontWeight: "700", 
-    color: PALETTE.text 
+  title: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: PALETTE.text,
   },
-  sub: { 
-    marginTop: 2, 
-    color: PALETTE.subtext 
+  sub: {
+    marginTop: 2,
+    color: PALETTE.subtext,
   },
   actionsRow: {
     marginTop: 12,
@@ -251,9 +281,9 @@ const s = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 10,
   },
-  linkBtnText: { 
-    color: "#fff", 
-    fontWeight: "700" 
+  linkBtnText: {
+    color: "#fff",
+    fontWeight: "700",
   },
   saveBtn: {
     marginLeft: "auto",
@@ -264,9 +294,7 @@ const s = StyleSheet.create({
     borderColor: PALETTE.cardBorder,
     backgroundColor: "#E6F8FF",
   },
-  saveBtnText: { color: PALETTE.navy, 
-    fontWeight: "700" 
-  },
+  saveBtnText: { color: PALETTE.navy, fontWeight: "700" },
   removeBtn: {
     marginLeft: "auto",
     paddingHorizontal: 12,
@@ -276,9 +304,9 @@ const s = StyleSheet.create({
     borderColor: PALETTE.cardBorder,
     backgroundColor: "#FFF5F6",
   },
-  removeBtnText: { 
-    color: PALETTE.danger, 
-    fontWeight: "600" 
+  removeBtnText: {
+    color: PALETTE.danger,
+    fontWeight: "600",
   },
   modalOverlay: {
     flex: 1,
@@ -293,10 +321,10 @@ const s = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
   },
-  modalTitle: { 
-    fontSize: 18, 
-    fontWeight: "600", 
-    marginBottom: 8 
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 8,
   },
   modelItem: {
     paddingVertical: 12,
@@ -304,8 +332,8 @@ const s = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#eee",
   },
-  modelText: { 
-    fontSize: 16 
+  modelText: {
+    fontSize: 16,
   },
   closeButton: {
     marginTop: 12,
@@ -315,8 +343,8 @@ const s = StyleSheet.create({
     backgroundColor: "#007AFF",
     borderRadius: 8,
   },
-  closeButtonText: { 
-    color: "#fff", 
-    fontWeight: "600" 
+  closeButtonText: {
+    color: "#fff",
+    fontWeight: "600",
   },
 });

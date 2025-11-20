@@ -22,7 +22,10 @@ const Tab = createBottomTabNavigator();
  */
 function DashboardTabs() {
   return (
-    <Tab.Navigator initialRouteName="Dashboard" screenOptions={{ headerShown: false }}>
+    <Tab.Navigator
+      initialRouteName="Dashboard" // ✅ was "Home" which doesn't exist in tabs
+      screenOptions={{ headerShown: false }}
+    >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="Saved Applications" component={SavedApplicationsScreen} />
       <Tab.Screen name="Reminders" component={ReminderScreen} />
@@ -40,8 +43,12 @@ export default function RootNavigator() {
     <Stack.Navigator initialRouteName="Home" screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="OAuth" component={OAuthScreen} />
-      <Stack.Screen name="ProfileIntake" component={ProfileIntake} />
       <Stack.Screen name="Tabs" component={DashboardTabs} />
+      <Stack.Screen
+        name="ProfileIntake"
+        component={ProfileIntake}
+        options={{ title: "Profile Intake" }}
+      />
       <Stack.Screen name="GoogleWelcome" component={GoogleWelcomeScreen} />
     </Stack.Navigator>
   );
