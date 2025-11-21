@@ -78,7 +78,7 @@ const SelectField: React.FC<SelectFieldProps> = ({
 };
 
 export default function ProfileIntake() {
-  const { me } = useAuth(); // me may be null until auth finishes
+  const { me, refresh } = useAuth(); // me may be null until auth finishes
   // console.log("Auth user me:", me);
 
   const navigation = useNavigation() as NavigationProp<RootNavParamList>;
@@ -176,8 +176,23 @@ export default function ProfileIntake() {
       const finalBudget = Number.isFinite(parsedBudget) ? parsedBudget : 0;
       const finalGpa = Number.isFinite(parsedGpa) ? parsedGpa : 0;
 
-      // 1.a Obtain user id from auth context
-      const userId = me?.userId || me?.id;
+      // 1.a Refresh auth context first to ensure we have latest user data
+      let currentMe = me;
+      if (!me || !me.authenticated || (!me.userId && !me.id)) {
+        console.log("Auth context not loaded, refreshing...");
+        try {
+          const refreshed = await refresh() as any;
+          if (refreshed && (refreshed.userId || refreshed.id)) {
+            currentMe = refreshed;
+          }
+        } catch (e) {
+          console.warn("Failed to refresh auth:", e);
+        }
+        console.log("Refreshed me object:", JSON.stringify(currentMe, null, 2));
+      }
+
+      // 1.b Obtain user id from auth context
+      const userId = currentMe?.userId || currentMe?.id;
       if (!userId) {
         throw new Error("User not authenticated. Please log in first.");
       }
