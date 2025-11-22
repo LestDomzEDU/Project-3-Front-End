@@ -32,3 +32,38 @@ global.console = {
   warn: jest.fn(),
   error: jest.fn(),
 };
+
+// Polyfills for React Native
+global.setImmediate = global.setTimeout;
+global.clearImmediate = global.clearTimeout;
+
+// Mock Linking with all required methods
+jest.mock("react-native/Libraries/Linking/Linking", () => ({
+  openURL: jest.fn(() => Promise.resolve()),
+  canOpenURL: jest.fn(() => Promise.resolve(true)),
+  getInitialURL: jest.fn(() => Promise.resolve(null)),
+  addEventListener: jest.fn(() => ({
+    remove: jest.fn(),
+  })),
+  removeEventListener: jest.fn(),
+}));
+
+// Mock SafeAreaView
+jest.mock("react-native-safe-area-context", () => ({
+  SafeAreaView: ({ children }) => children,
+}));
+
+// Mock navigation - but simpler since we pass it in tests
+jest.mock("@react-navigation/native", () => {
+  const actualNav = jest.requireActual("@react-navigation/native");
+  return {
+    ...actualNav,
+    useNavigation: () => ({
+      navigate: jest.fn(),
+      goBack: jest.fn(),
+    }),
+    useRoute: () => ({
+      params: {},
+    }),
+  };
+});
