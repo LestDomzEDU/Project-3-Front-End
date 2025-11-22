@@ -161,11 +161,163 @@ export default function ProfileIntake() {
   // }
 
   //Takes me back to dashboard
-  function dashboardButton() {
-    navigation.navigate("Tabs");
-  }
+
+  // // when i click dashboard, the profile info from when the profile is like before isnt there cux its saying no matches
+  // function dashboardButton() {
+  //   // pass in the top schools parms so that the dashboafd reflwcts what it has
+
+  //   navigation.navigate("Tabs", { screen: "Dashboard" });
+  // }
 
   const [submitting, setSubmitting] = React.useState(false);
+
+  // Prefill form from saved preferences (if present on the server)
+  React.useEffect(() => {
+    let mounted = true;
+    const loadPrefs = async () => {
+      try {
+        // Ensure we have latest auth info
+        let currentMe = me;
+        if (
+          (!currentMe || !currentMe.authenticated) &&
+          typeof refresh === "function"
+        ) {
+          try {
+            currentMe = await refresh();
+          } catch (e) {
+            // ignore
+          }
+        }
+        const userId = currentMe?.userId || currentMe?.id;
+        if (!userId) return;
+
+        // Try both common query variations; backend might expect userId or studentId
+        const tryUrls = [
+          `${API.BASE}/api/preferences?userId=${userId}`,
+          `${API.BASE}/api/preferences?studentId=${userId}`,
+        ];
+
+        for (const url of tryUrls) {
+          try {
+            const res = await fetch(url, { credentials: "include" });
+            if (!res.ok) continue;
+            const prefs = await res.json();
+            if (!prefs || !mounted) continue;
+
+            // // Map server fields into local state (only update when present)
+            // if (prefs.budget !== undefined && prefs.budget !== null) {
+            //   setBudget(prefs.budget);
+            //   setBudgetText(String(prefs.budget));
+            // }
+            // if (prefs.schoolYear) setApplyYear(prefs.schoolYear);
+            // if (prefs.expectedGrad) setGradDate(prefs.expectedGrad);
+            // if (prefs.schoolType) {
+            //   setIsPrivate(
+            //     prefs.schoolType === "PRIVATE"
+            //       ? true
+            //       : prefs.schoolType === "PUBLIC"
+            //       ? false
+            //       : null
+            //   );
+            // }
+            // if (prefs.state) setStateLocation(prefs.state);
+            // if (prefs.programType) setMajor(prefs.programType);
+            // if (prefs.major) setMajor(prefs.major);
+            // if (prefs.requirementType)
+            //   if (prefs.requirementType === "CAPSTONE") {
+            //     // requrimnets are either CAPSTONE or NONE
+            //     setCapstone(prefs.requirementType === "CAPSTONE");
+            //   } else if (prefs.requirementType === "GRE") {
+            //     setCapstone(false);
+            //   } else {
+            //     setCapstone(false);
+            //   }
+
+            // if (prefs.enrollmentType)
+            //   setTimeType(
+            //     prefs.enrollmentType === "FULL_TIME" ? "Full-time" : "Part-time"
+            //   );
+            // if (prefs.modality)
+            //   setFormat(
+            //     prefs.modality === "IN_PERSON"
+            //       ? "In person"
+            //       : prefs.modality === "HYBRID"
+            //       ? "Hybrid"
+            //       : "Online"
+            //   );
+            // if (prefs.gpa !== undefined && prefs.gpa !== null) {
+            //   setGpa(prefs.gpa);
+            //   setGpaText(String(prefs.gpa));
+            // }
+            // if (prefs.targetCountry) setCountry(prefs.targetCountry);
+            // After `const prefs = await res.json();`
+            console.log("Pref GET raw JSON:", prefs);
+            const raw = prefs?.preference || prefs?.data || prefs || {};
+
+            // Map server fields into local state (only update when present)
+            if (raw.budget !== undefined && raw.budget !== null) {
+              setBudget(raw.budget);
+              setBudgetText(String(raw.budget));
+            }
+            if (raw.schoolYear) setApplyYear(raw.schoolYear);
+            if (raw.expectedGrad) setGradDate(raw.expectedGrad);
+            if (raw.schoolType) {
+              setIsPrivate(
+                raw.schoolType === "PRIVATE"
+                  ? true
+                  : raw.schoolType === "PUBLIC"
+                  ? false
+                  : null
+              );
+            }
+            if (raw.state) setStateLocation(raw.state);
+            if (raw.programType) setMajor(raw.programType);
+            if (raw.major) setMajor(raw.major);
+
+            // Normalize requirementType → capstone boolean
+            if (
+              raw.requirementType !== undefined &&
+              raw.requirementType !== null
+            ) {
+              const rt = String(raw.requirementType).toUpperCase();
+              setCapstone(rt === "CAPSTONE");
+            }
+
+            if (raw.enrollmentType)
+              setTimeType(
+                raw.enrollmentType === "FULL_TIME" ? "Full-time" : "Part-time"
+              );
+
+            if (raw.modality)
+              setFormat(
+                raw.modality === "IN_PERSON"
+                  ? "In person"
+                  : raw.modality === "HYBRID"
+                  ? "Hybrid"
+                  : "Online"
+              );
+
+            if (raw.gpa !== undefined && raw.gpa !== null) {
+              setGpa(raw.gpa);
+              setGpaText(String(raw.gpa));
+            }
+            if (raw.targetCountry) setCountry(raw.targetCountry);
+            // found and applied prefs — stop trying other URLs
+            break;
+          } catch (e) {
+            // try next url
+            continue;
+          }
+        }
+      } catch (e) {
+        // swallow — not critical for UX
+      }
+    };
+    loadPrefs();
+    return () => {
+      mounted = false;
+    };
+  }, [me, refresh]);
 
   async function handleSubmit() {
     setSubmitting(true);
@@ -181,7 +333,7 @@ export default function ProfileIntake() {
       if (!me || !me.authenticated || (!me.userId && !me.id)) {
         console.log("Auth context not loaded, refreshing...");
         try {
-          const refreshed = await refresh() as any;
+          const refreshed = (await refresh()) as any;
           if (refreshed && (refreshed.userId || refreshed.id)) {
             currentMe = refreshed;
           }
@@ -221,7 +373,7 @@ export default function ProfileIntake() {
             : "ONLINE",
         gpa: finalGpa,
         // RequirementType: CAPSTONE or NONE (adjust for your server)
-        requirementType: capstone ? "CAPSTONE" : "NONE",
+        requirementType: capstone ? "CAPSTONE" : "NEITHER",
       };
 
       // 3) Save/Upsert preferences (POST)
@@ -239,6 +391,60 @@ export default function ProfileIntake() {
           `Failed to save preferences: ${saveRes.status} ${text}`
         );
       }
+      let savedPrefs = null;
+      try {
+        savedPrefs = await saveRes.json().catch(() => null);
+      } catch {}
+      const effective = savedPrefs || prefPayload;
+
+      // update UI immediately from server-returned object or the payload we sent
+      if (effective.budget !== undefined && effective.budget !== null) {
+        setBudget(effective.budget);
+        setBudgetText(String(effective.budget));
+      }
+      if (effective.schoolYear) setApplyYear(effective.schoolYear);
+      if (effective.expectedGrad) setGradDate(effective.expectedGrad);
+      if (effective.schoolType) {
+        setIsPrivate(
+          effective.schoolType === "PRIVATE"
+            ? true
+            : effective.schoolType === "PUBLIC"
+            ? false
+            : null
+        );
+      }
+      if (effective.state) setStateLocation(effective.state);
+      if (effective.programType) setMajor(effective.programType);
+      if (effective.major) setMajor(effective.major);
+
+      // normalize requirementType → capstone boolean
+      if (
+        effective.requirementType !== undefined &&
+        effective.requirementType !== null
+      ) {
+        const rt = String(effective.requirementType).toUpperCase();
+        setCapstone(rt === "CAPSTONE");
+      }
+
+      if (effective.enrollmentType)
+        setTimeType(
+          effective.enrollmentType === "FULL_TIME" ? "Full-time" : "Part-time"
+        );
+
+      if (effective.modality)
+        setFormat(
+          effective.modality === "IN_PERSON"
+            ? "In person"
+            : effective.modality === "HYBRID"
+            ? "Hybrid"
+            : "Online"
+        );
+
+      if (effective.gpa !== undefined && effective.gpa !== null) {
+        setGpa(effective.gpa);
+        setGpaText(String(effective.gpa));
+      }
+      if (effective.targetCountry) setCountry(effective.targetCountry);
 
       // 4) Fetch top 5 scored schools
       const topUrl = `${API.BASE}/api/schools/top5?userId=${userId}`;
@@ -392,15 +598,6 @@ export default function ProfileIntake() {
             <Text style={styles.buttonText}>
               {submitting ? "Searching…" : "Save profile"}
             </Text>
-          </Pressable>
-          <Pressable
-            style={[
-              styles.button,
-              { backgroundColor: "#6B7280", marginTop: 10 },
-            ]}
-            onPress={dashboardButton}
-          >
-            <Text style={styles.buttonText}>Go to Dashboard</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
