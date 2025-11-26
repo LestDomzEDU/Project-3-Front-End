@@ -67,6 +67,7 @@ export default function OAuthScreen() {
       setLoading(true);
       await finalize();
       setLoading(false);
+      navigation.navigate('Loading');
     }
   };
 
