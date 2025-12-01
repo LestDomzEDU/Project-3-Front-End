@@ -25,7 +25,12 @@ function first<T>(...args: T[]) {
 
 function pickAvatar(me?: AnyObj) {
   if (!me) return "";
-  const flat = first<string>(me["avatarUrl"] as any, me["avatar_url"] as any, me["picture"] as any, me["avatar"] as any);
+  const flat = first<string>(
+    me["avatarUrl"] as any,
+    me["avatar_url"] as any,
+    me["picture"] as any,
+    me["avatar"] as any
+  );
   if (flat) return flat;
   if (me["github"] && typeof me["github"] === "object") {
     const gh = me["github"] as AnyObj;
@@ -34,13 +39,38 @@ function pickAvatar(me?: AnyObj) {
   return "";
 }
 
+/**
+ * Pick a display username for Settings:
+ * - Prefer top-level `name` (Discord global_name / GitHub name / Google name)
+ * - Then Discord attributes (global_name, username)
+ * - Then login / GitHub username
+ * - Finally fall back to email or "Unknown User"
+ */
 function pickUsername(me?: AnyObj) {
   if (!me) return "";
-  const flat = first<string>(me["login"] as any, me["username"] as any, me["githubUsername"] as any);
+
+  const attrs =
+    (me["attributes"] && typeof me["attributes"] === "object"
+      ? (me["attributes"] as AnyObj)
+      : {}) || {};
+
+  const flat = first<string>(
+    me["name"] as any,                // unified display name from backend
+    attrs["global_name"] as any,      // Discord display name
+    attrs["username"] as any,         // Discord username
+    me["login"] as any,
+    me["username"] as any,
+    me["githubUsername"] as any
+  );
   if (flat) return flat;
-  if (me["github"] && typeof me["github"] === "object" && typeof (me["github"] as AnyObj)["login"] === "string") {
-    return (me["github"] as AnyObj)["login"] as string;
+
+  if (me["github"] && typeof me["github"] === "object") {
+    const gh = me["github"] as AnyObj;
+    if (typeof gh["login"] === "string") {
+      return gh["login"] as string;
+    }
   }
+
   return first<string>(me["email"] as any, "Unknown User");
 }
 
@@ -97,7 +127,9 @@ export default function SettingsScreen() {
 
   const onAdjustPreferences = async () => {
     // Mark tutorial complete *as soon as* user chooses to adjust preferences
-    try { await AsyncStorage.setItem(TUTORIAL_KEY, "1"); } catch {}
+    try {
+      await AsyncStorage.setItem(TUTORIAL_KEY, "1");
+    } catch {}
     setTutorialGate(false);
     (navigation as any).navigate("ProfileIntake" as never);
   };
@@ -137,7 +169,9 @@ export default function SettingsScreen() {
           <View style={s.gateCard}>
             <Text style={s.gateTitle}>Finish setup</Text>
             <Text style={s.gateBody}>
-              To unlock the app, press <Text style={{fontWeight:"800"}}>Adjust Preferences</Text> and configure your interests.
+              To unlock the app, press{" "}
+              <Text style={{ fontWeight: "800" }}>Adjust Preferences</Text> and
+              configure your interests.
             </Text>
             <Pressable style={s.primaryButton} onPress={onAdjustPreferences}>
               <Text style={s.primaryButtonText}>Adjust Preferences</Text>
