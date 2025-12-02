@@ -25,15 +25,33 @@ function DashboardTabs() {
       initialRouteName="Dashboard"
       screenOptions={{
         headerShown: false,
+
+        // <<< --- TAB BAR COLORS --- >>>
+        tabBarStyle: {
+          backgroundColor: "#0595F2",   // deep GradQuest blue
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 8,
+          borderTopWidth: 0,
+        },
+
+        tabBarActiveTintColor: "#FFC727",   // gold text (active)
+        tabBarInactiveTintColor: "#FFE08A", // light gold for inactive
+
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "700",
+        },
+
+        // Nice gold indicator under the active tab
+        tabBarIndicatorStyle: {
+          backgroundColor: "#FFC727",
+          height: 3,
+        },
       }}
-      initialRouteName="Dashboard" // ✅ was "Home" which doesn't exist in tabs
-      screenOptions={{ headerShown: false }}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen
-        name="Saved Applications"
-        component={SavedApplicationsScreen}
-      />
+      <Tab.Screen name="Saved Applications" component={SavedApplicationsScreen} />
       <Tab.Screen name="Reminders" component={ReminderScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>

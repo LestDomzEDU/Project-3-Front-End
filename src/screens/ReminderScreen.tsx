@@ -1,20 +1,26 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, FlatList } from "react-native";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Image,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const PALETTE = {
-  bg: "#FFFFFF",
-  text: "#00171F",
+  blueDark: "#053F7C",
+  blue: "#0061A8",
+  gold: "#FFC727",
+  white: "#FFFFFF",
+  textDark: "#001B33",
   subtext: "#4B5563",
-  primary: "#00A7E1",
-  navy: "#003459",
   danger: "#B00020",
   cardBorder: "#DCE8F2",
 };
 
 export default function ReminderScreen() {
-  // Example mock data
-  const [reminders, setReminders] = useState([
+  const [reminders] = useState([
     {
       id: "1",
       title: "Application Deadline",
@@ -48,92 +54,129 @@ export default function ReminderScreen() {
   });
 
   const renderItem = ({ item }: any) => (
-    <View style={styles.card}>
+    <View style={s.card}>
       <View style={{ flexDirection: "row", alignItems: "center" }}>
-        <Text style={styles.title}>{item.title}</Text>
-        {item.urgent && <Text style={styles.urgent}> ❗</Text>}
+        <Text style={s.cardTitle}>{item.title}</Text>
+        {item.urgent && <Text style={s.urgent}> ❗</Text>}
       </View>
-      <Text style={styles.date}>
+
+      <Text style={s.dateText}>
         Due: {new Date(item.dueDate).toLocaleDateString()}
       </Text>
+
       {item.urgent && (
-        <Text style={styles.reminderText}>
-          Reminder sent 2 weeks before deadline
-        </Text>
+        <Text style={s.reminderText}>Reminder sent 2 weeks before deadline</Text>
       )}
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.header}>Reminders</Text>
+    <SafeAreaView style={s.screen}>
+      {/* Header */}
+      <View style={s.header}>
+        <View style={{ width: 40 }} />
+
+        <Text style={s.headerTitle}>Reminders</Text>
+
+        <Image
+          source={require("../../assets/gradquest_logo.png")}
+          style={s.logo}
+        />
+      </View>
+
+      {/* Yellow divider bar */}
+      <View style={s.headerAccent} />
 
       <FlatList
         data={processedReminders}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={s.listContainer}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>No reminders yet.</Text>
+          <Text style={s.emptyText}>No reminders yet.</Text>
         }
       />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: PALETTE.bg,
-        paddingHorizontal: 16,
-        paddingTop: 50,
-    },
-    header: {
-        fontSize: 26,
-        fontWeight: "800",
-        marginBottom: 20,
-        color: PALETTE.text,
-    },
-    listContainer: {
-        paddingBottom: 40,
-    },
-    card: {
-        backgroundColor: "#FFFFFF",
-        borderWidth: 1,
-        borderColor: PALETTE.cardBorder,
-        borderRadius: 16,
-        padding: 14,
-        marginBottom: 12,
-        shadowColor: "#000",
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 3 },
-        elevation: 1,
-    },
-    title: {
-        fontSize: 16,
-        fontWeight: "700",
-        color: PALETTE.text,
-    },
-    date: {
-        fontSize: 14,
-        color: PALETTE.subtext,
-        marginTop: 4,
-    },
-    urgent: {
-        color: PALETTE.danger,
-        fontSize: 18,
-        fontWeight: "800",
-    },
-    reminderText: {
-        marginTop: 6,
-        fontSize: 13,
-        color: PALETTE.primary,
-        fontStyle: "italic",
-    },
-    emptyText: {
-        textAlign: "center",
-        color: PALETTE.subtext,
-        marginTop: 24,
-    },
+const s = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: PALETTE.white,
+  },
+
+  /* ⇢ Header */
+  header: {
+    paddingTop: 40,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
+    backgroundColor: PALETTE.white,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerAccent: {
+    height: 4,
+    backgroundColor: PALETTE.gold,
+    width: "100%",
+  },
+  logo: {
+    width: 38,
+    height: 38,
+    resizeMode: "contain",
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: PALETTE.blueDark,
+  },
+
+  listContainer: {
+    padding: 16,
+    paddingBottom: 60,
+  },
+
+  /* ⇢ Reminder Cards */
+  card: {
+    backgroundColor: PALETTE.white,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: PALETTE.cardBorder,
+    marginBottom: 14,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: PALETTE.textDark,
+  },
+  dateText: {
+    color: PALETTE.subtext,
+    fontSize: 14,
+    marginTop: 4,
+  },
+
+  urgent: {
+    color: PALETTE.danger,
+    fontSize: 18,
+    fontWeight: "800",
+  },
+
+  reminderText: {
+    marginTop: 6,
+    fontSize: 13,
+    color: PALETTE.blue,
+    fontStyle: "italic",
+  },
+
+  emptyText: {
+    marginTop: 24,
+    color: PALETTE.subtext,
+    textAlign: "center",
+  },
 });

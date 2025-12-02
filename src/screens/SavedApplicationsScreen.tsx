@@ -1,147 +1,149 @@
-import * as React from "react";
-import { View, Text, FlatList, Pressable, StyleSheet, Linking, } from "react-native";
+import React from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Pressable,
+  Linking,
+  Image,
+} from "react-native";
 
 const PALETTE = {
-  bg: "#FFFFFF",
-  text: "#00171F",
-  subtext: "#4B5563",
-  primary: "#00A7E1",
-  navy: "#003459",
-  danger: "#B00020",
-  cardBorder: "#DCE8F2",
+  blueDark: "#053F7C",
+  blue: "#0061A8",
+  gold: "#FFC727",
+  white: "#FFFFFF",
+  textDark: "#001B33",
+  subtext : "#4B5563",
 };
 
 export default function SavedApplicationsScreen() {
-  const savedApps = [
+  const apps = [
     {
       id: "1",
       name: "AI Research Fellowship",
       company: "OpenAI Scholars",
       urgent: true,
-      link: "https://example.com/app1",
+      link: "https://example.com",
     },
     {
       id: "2",
       name: "Graduate Data Science Internship",
       company: "DataQuest Labs",
       urgent: false,
-      link: "https://example.com/app2",
+      link: "https://example.com",
     },
     {
       id: "3",
       name: "PhD Program in ML",
       company: "TechU",
       urgent: true,
-      link: "https://example.com/app3",
+      link: "https://example.com",
     },
   ];
 
-  const renderItem = ({ item }: any) => (
-    <View style={styles.appCard}>
-      {/* Left urgent mark */}
-      <View style={styles.leftIcon}>
-        {item.urgent && <Text style={styles.urgentMark}>❗</Text>}
+  const renderItem = ({ item }) => (
+    <View style={s.card}>
+      {item.urgent && <Text style={s.urgent}>❗</Text>}
+
+      <View style={{ flex: 1 }}>
+        <Text style={s.cardTitle}>{item.name}</Text>
+        <Text style={s.cardSub}>{item.company}</Text>
       </View>
 
-      <View style={styles.appInfo}>
-        <Text style={styles.appName}>{item.name}</Text>
-        <Text style={styles.appCompany}>{item.company}</Text>
-      </View>
-
-      {/* Apply button */}
-      <Pressable
-        style={({ pressed }) => [styles.applyButton, pressed && { opacity: 0.9 }]}
-        onPress={() => Linking.openURL(item.link)}
-      >
-        <Text style={styles.applyText}>Apply</Text>
+      <Pressable style={s.applyBtn} onPress={() => Linking.openURL(item.link)}>
+        <Text style={s.applyBtnText}>Apply</Text>
       </Pressable>
     </View>
   );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Saved Apps</Text>
+    <View style={s.screen}>
+      <View style={s.header}>
+        <View style={{ width: 40 }} />
+        <Text style={s.headerTitle}>Saved Apps</Text>
+        <Image
+          source={require("../../assets/gradquest_logo.png")}
+          style={s.logo}
+        />
+      </View>
+
+      <View style={s.headerAccent} />
 
       <FlatList
-        data={savedApps}
+        contentContainerStyle={{ padding: 16 }}
+        data={apps}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        contentContainerStyle={styles.listContainer}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>No saved applications yet.</Text>
-        }
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: PALETTE.bg,
-    paddingHorizontal: 16,
-    paddingTop: 50,
+const s = StyleSheet.create({
+  screen: { 
+    flex: 1, 
+    backgroundColor: 
+    PALETTE.white 
   },
   header: {
-    fontSize: 26,
-    fontWeight: "800",
-    marginBottom: 20,
-    color: PALETTE.text,
-  },
-  listContainer: {
-    paddingBottom: 60,
-  },
-  appCard: {
+    paddingTop: 40,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
+    backgroundColor: PALETTE.white,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: PALETTE.cardBorder,
+    justifyContent: "space-between",
+  },
+  headerAccent: {
+    height: 4,
+    backgroundColor: PALETTE.gold,
+    width: "100%",
+  },
+  logo: {
+    width: 38,
+    height: 38,
+    resizeMode: "contain",
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: PALETTE.blueDark,
+  },
+  card: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    backgroundColor: PALETTE.white,
+    padding: 16,
     borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: "#DCE8F2",
+    marginBottom: 14,
   },
-  leftIcon: {
-    width: 30,
-    alignItems: "center",
-  },
-  urgentMark: {
+  urgent: {
     fontSize: 20,
-    color: PALETTE.danger, 
+    color: "red",
+    marginRight: 8,
   },
-  appInfo: {
-    flex: 1,
-    marginHorizontal: 8,
-  },
-  appName: {
+  cardTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: PALETTE.text,
+    color: PALETTE.textDark,
   },
-  appCompany: {
-    fontSize: 14,
+  cardSub: {
     color: PALETTE.subtext,
-    marginTop: 2,
+    marginTop: 3,
   },
-  applyButton: {
-    backgroundColor: PALETTE.primary, 
+  applyBtn: {
+    backgroundColor: PALETTE.blue,
+    paddingHorizontal: 16,
     paddingVertical: 8,
-    paddingHorizontal: 14,
     borderRadius: 10,
   },
-  applyText: {
-    fontSize: 14,
+  applyBtnText: {
+    color: PALETTE.white,
     fontWeight: "700",
-    color: "#FFFFFF",
-  },
-  emptyText: {
-    textAlign: "center",
-    marginTop: 24,
-    color: PALETTE.subtext,
   },
 });
