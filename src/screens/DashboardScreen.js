@@ -56,6 +56,7 @@ export default function DashboardScreen() {
       const program =
         item.programName ?? item.program ?? item.programType ?? "Program info";
       const website = item.websiteUrl ?? item.website ?? item.link ?? null;
+      console.log(website);
 
       return (
         <View style={s.card}>
@@ -127,11 +128,6 @@ export default function DashboardScreen() {
             <Text style={s.back}>Saved</Text>
           </TouchableOpacity>
         </View>
-
-        <Text style={s.h1}>Dashboard</Text>
-        <TouchableOpacity onPress={() => setModelsModalVisible(true)}>
-          <Text style={s.back}>Models</Text>
-        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -185,13 +181,6 @@ export default function DashboardScreen() {
           </View>
         </View>
       </Modal>
-
-      <TouchableOpacity
-        style={s.backButton}
-        onPress={() => navigation.navigate("Home")}
-      >
-        <Text style={s.backButtonText}>← Back</Text>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
