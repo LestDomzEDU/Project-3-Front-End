@@ -47,12 +47,11 @@ export default function DashboardScreen() {
     const id = item.id ?? item.schoolId ?? item.name;
     const saved = savedApps.find((a) => a.id === id);
 
-      const name =
-        item.name ?? item.schoolName ?? item.programName ?? "Untitled";
-      const program =
-        item.programName ?? item.program ?? item.programType ?? "Program info";
-      const website = item.websiteUrl ?? item.website ?? item.link ?? null;
-      console.log(website);
+    const name = item.name ?? item.schoolName ?? item.programName ?? "Untitled";
+    const program =
+      item.programName ?? item.program ?? item.programType ?? "Program info";
+    const website = item.websiteUrl ?? item.website ?? item.link ?? null;
+    console.log(website);
 
     return (
       <View style={s.card}>
@@ -121,14 +120,6 @@ export default function DashboardScreen() {
         }
         renderItem={renderItem}
       />
-
-      {/* Back Button */}
-      <TouchableOpacity
-        style={s.backButton}
-        onPress={() => navigation.navigate("Home")}
-      >
-        <Text style={s.backButtonText}>← Back</Text>
-      </TouchableOpacity>
 
       {/* Models Modal */}
       <Modal
@@ -263,21 +254,6 @@ const s = StyleSheet.create({
   removeBtnText: {
     color: "#B00020",
     fontWeight: "700",
-  },
-
-  backButton: {
-    alignSelf: "flex-start",
-    marginLeft: 20,
-    marginBottom: 40,
-    backgroundColor: PALETTE.blue,
-    borderRadius: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-  },
-  backButtonText: {
-    color: PALETTE.white,
-    fontWeight: "700",
-    fontSize: 16,
   },
 
   modalOverlay: {
