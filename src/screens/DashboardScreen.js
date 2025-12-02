@@ -1,4 +1,9 @@
-import { useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+} from "react";
 import {
   View,
   Text,
@@ -13,6 +18,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSavedApps } from "../context/SavedAppsContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const PALETTE = {
   blueDark: "#053F7C",
@@ -21,37 +27,138 @@ const PALETTE = {
   white: "#FFFFFF",
   textDark: "#001B33",
   subtext: "#4B5563",
+
+  // extra keys used by tutorial styles
+  bg: "#FFFFFF",
+  primary: "#00A7E1",
+  navy: "#003459",
+  cardBorder: "#DCE8F2",
+  danger: "#B00020",
 };
+
+const TUTORIAL_KEY = "tutorial:completed";
+
+function CoachBubble({ title, body, arrowLeftPct }) {
+  return (
+    <View style={cm.wrap} pointerEvents="box-none">
+      <View style={[cm.bubble, { maxWidth: "92%" }]}>
+        <Text style={cm.title}>{title}</Text>
+        <Text style={cm.body}>{body}</Text>
+      </View>
+      <View style={cm.arrowWrap}>
+        <View style={[cm.arrow, { left: `${arrowLeftPct}%` }]} />
+      </View>
+    </View>
+  );
+}
 
 export default function DashboardScreen() {
   const navigation = useNavigation();
   const route = useRoute();
 
+  // models / preferences UI
   const [modelsModalVisible, setModelsModalVisible] = useState(false);
   const [selectedCollege, setSelectedCollege] = useState(null);
 
+  // saved apps context
   const { savedApps, addSavedApp, removeSavedApp } = useSavedApps();
 
-  // Data passed from other screens (Preferences or Intake)
+  // Data from Preferences/Intake
   const topSchools = route?.params?.topSchools ?? [];
-  const dataToShow = Array.isArray(topSchools) ? topSchools : [];
+  // Prefer topSchools from updated preferences; fall back to savedApps
+  const dataToShow =
+    Array.isArray(topSchools) && topSchools.length > 0
+      ? topSchools
+      : savedApps || [];
 
-  const openUrl = (url) => url && Linking.openURL(url).catch(() => {});
+  const openUrl = (url) =>
+    url && Linking.openURL(url).catch(() => {});
 
-  const keyForCollege = useCallback(
-    (item) => String(item.id ?? item.schoolId ?? item.name),
+  // ===== Tutorial gating =====
+  const [tutorialDone, setTutorialDone] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(
+    route?.params?.showTutorial === true
+  );
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const v = await AsyncStorage.getItem(TUTORIAL_KEY);
+        const completed = v === "1";
+        setTutorialDone(completed);
+        if (completed) setShowTutorial(false);
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
+
+  // Positions correspond to approximate centers for 4 tabs
+  const bubbles = useMemo(
+    () => [
+      {
+        title: "Dashboard",
+        body: "Your home base for shortcuts and saved schools.",
+        leftPct: 12,
+      },
+      {
+        title: "Saved",
+        body: "Quick access to the schools you’re tracking.",
+        leftPct: 39,
+      },
+      {
+        title: "Reminders",
+        body: "Deadlines & financial aid reminders live here.",
+        leftPct: 64,
+      },
+      {
+        title: "Settings",
+        body: "Tune your preferences to personalize results.",
+        leftPct: 88,
+      },
+    ],
     []
+  );
+
+  const onNext = () => {
+    if (step < bubbles.length - 1) {
+      setStep((s) => s + 1);
+    } else {
+      setShowTutorial(false);
+      navigation.navigate("Settings", { tutorialMode: true });
+    }
+  };
+
+  const keyForItem = useCallback(
+    (item, idx) =>
+      String(item?.id ?? item?.schoolId ?? item?.name ?? idx),
+    []
+  );
+
+  const renderEmpty = () => (
+    <View style={s.empty}>
+      <Text style={s.emptyTitle}>Your dashboard</Text>
+      <Text style={s.emptySub}>
+        Save colleges to see them here, set reminders, and keep everything
+        organized.
+      </Text>
+    </View>
   );
 
   const renderItem = ({ item }) => {
     const id = item.id ?? item.schoolId ?? item.name;
     const saved = savedApps.find((a) => a.id === id);
 
-    const name = item.name ?? item.schoolName ?? item.programName ?? "Untitled";
+    const name =
+      item.name ?? item.schoolName ?? item.programName ?? "Untitled";
     const program =
-      item.programName ?? item.program ?? item.programType ?? "Program info";
-    const website = item.websiteUrl ?? item.website ?? item.link ?? null;
-    console.log(website);
+      item.programName ??
+      item.program ??
+      item.programType ??
+      "Program info";
+    const website =
+      item.websiteUrl ?? item.website ?? item.link ?? null;
 
     return (
       <View style={s.card}>
@@ -60,11 +167,16 @@ export default function DashboardScreen() {
 
         <View style={s.cardActions}>
           {website ? (
-            <Pressable onPress={() => openUrl(website)} style={s.primaryBtn}>
+            <Pressable
+              onPress={() => openUrl(website)}
+              style={s.primaryBtn}
+            >
               <Text style={s.primaryBtnText}>Visit</Text>
             </Pressable>
           ) : (
-            <Text style={[s.cardSub, { opacity: 0.7 }]}>No website</Text>
+            <Text style={[s.cardSub, { opacity: 0.7 }]}>
+              No website
+            </Text>
           )}
 
           <TouchableOpacity
@@ -94,34 +206,26 @@ export default function DashboardScreen() {
     <SafeAreaView style={s.screen}>
       {/* HEADER */}
       <View style={s.header}>
-        {/* Left spacer keeps Dashboard centered */}
         <View style={{ width: 40 }} />
-
         <Text style={s.headerTitle}>Dashboard</Text>
-
-        {/* Logo on the RIGHT */}
         <Image
           source={require("../../assets/gradquest_logo.png")}
           style={s.logo}
         />
       </View>
 
-      {/* Yellow accent */}
       <View style={s.headerAccent} />
 
+      {/* MAIN LIST */}
       <FlatList
-        contentContainerStyle={{ padding: 16 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
         data={dataToShow}
-        keyExtractor={keyForCollege}
-        ListEmptyComponent={
-          <Text style={[s.cardSub, { textAlign: "center", marginTop: 24 }]}>
-            No matches yet.
-          </Text>
-        }
+        keyExtractor={keyForItem}
+        ListEmptyComponent={renderEmpty}
         renderItem={renderItem}
       />
 
-      {/* Models Modal */}
+      {/* Models Modal (kept for future use) */}
       <Modal
         visible={modelsModalVisible}
         animationType="slide"
@@ -135,9 +239,13 @@ export default function DashboardScreen() {
             <Text style={{ marginBottom: 8, color: "#374151" }}>
               {selectedCollege
                 ? `${
-                    selectedCollege.name ?? selectedCollege.schoolName ?? ""
+                    selectedCollege.name ??
+                    selectedCollege.schoolName ??
+                    ""
                   } — ${
-                    selectedCollege.programName ?? selectedCollege.program ?? ""
+                    selectedCollege.programName ??
+                    selectedCollege.program ??
+                    ""
                   }`
                 : ""}
             </Text>
@@ -161,6 +269,33 @@ export default function DashboardScreen() {
             >
               <Text style={s.closeButtonText}>Close</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Tutorial overlay */}
+      <Modal
+        visible={showTutorial && !tutorialDone}
+        transparent
+        animationType="fade"
+      >
+        <View style={s.modalOverlay}>
+          <View style={s.bubbleContainer} pointerEvents="none">
+            <CoachBubble
+              title={bubbles[step].title}
+              body={bubbles[step].body}
+              arrowLeftPct={bubbles[step].leftPct}
+            />
+          </View>
+
+          <View style={s.nextContainer}>
+            <Pressable style={s.nextBtn} onPress={onNext}>
+              <Text style={s.nextText}>
+                {step < bubbles.length - 1
+                  ? "Continue"
+                  : "Go to Settings"}
+              </Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -196,6 +331,24 @@ const s = StyleSheet.create({
     color: PALETTE.blueDark,
   },
 
+  empty: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: PALETTE.textDark,
+  },
+  emptySub: {
+    marginTop: 8,
+    fontSize: 16,
+    color: PALETTE.subtext,
+    textAlign: "center",
+  },
+
   card: {
     backgroundColor: PALETTE.white,
     padding: 16,
@@ -221,7 +374,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     marginTop: 12,
     alignItems: "center",
-    gap: 10,
+    columnGap: 10,
   },
 
   primaryBtn: {
@@ -256,15 +409,38 @@ const s = StyleSheet.create({
     fontWeight: "700",
   },
 
+  // Shared overlay for both models modal and tutorial modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "flex-end",
+  },
+
+  bubbleContainer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 72,
     alignItems: "center",
   },
+  nextContainer: { padding: 16, paddingBottom: 24 },
+  nextBtn: {
+    backgroundColor: PALETTE.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  nextText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 16,
+  },
+
   modalContent: {
     width: "90%",
     maxHeight: "70%",
+    alignSelf: "center",
+    marginBottom: 40,
     backgroundColor: PALETTE.white,
     borderRadius: 12,
     padding: 16,
@@ -293,5 +469,37 @@ const s = StyleSheet.create({
   closeButtonText: {
     color: PALETTE.white,
     fontWeight: "600",
+  },
+});
+
+// ===== Coachmark bubble styles =====
+const cm = StyleSheet.create({
+  wrap: { width: "100%", alignItems: "center" },
+  bubble: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: PALETTE.textDark,
+    marginBottom: 4,
+  },
+  body: { fontSize: 14, color: PALETTE.subtext },
+  arrowWrap: { width: "100%", height: 0, position: "relative" },
+  arrow: {
+    position: "absolute",
+    width: 0,
+    height: 0,
+    borderLeftWidth: 10,
+    borderRightWidth: 10,
+    borderTopWidth: 12,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderTopColor: "#fff",
+    bottom: -10,
   },
 });
