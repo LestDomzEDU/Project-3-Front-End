@@ -47,11 +47,12 @@ export default function DashboardScreen() {
     const id = item.id ?? item.schoolId ?? item.name;
     const saved = savedApps.find((a) => a.id === id);
 
-    const name =
-      item.name ?? item.schoolName ?? item.programName ?? "Untitled";
-    const program =
-      item.programName ?? item.program ?? item.programType ?? "Program info";
-    const website = item.websiteUrl ?? item.website ?? item.link ?? null;
+      const name =
+        item.name ?? item.schoolName ?? item.programName ?? "Untitled";
+      const program =
+        item.programName ?? item.program ?? item.programType ?? "Program info";
+      const website = item.websiteUrl ?? item.website ?? item.link ?? null;
+      console.log(website);
 
     return (
       <View style={s.card}>
