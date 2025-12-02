@@ -6,11 +6,12 @@ import { useAuth } from "../context/AuthContext";
 import API from "../lib/api";
 
 const PALETTE = {
-  bg: "#FFFFFF",
-  text: "#000000",
+  blueDark: "#053F7C",
+  blue: "#0061A8",
+  gold: "#FFC727",
+  white: "#FFFFFF",
+  textDark: "#001B33",
   subtext: "#4B5563",
-  primary: "#00A7E1",
-  navy: "#003459",
   danger: "#B00020",
   cardBorder: "#DCE8F2",
 };
@@ -43,8 +44,7 @@ function pickUsername(me?: AnyObj) {
 }
 
 export default function SettingsScreen() {
-  // ✅ Use the Auth context as the single source of truth
-  const { me, setMe, refresh } = useAuth();
+  const { me, setMe } = useAuth();
   const navigation = useNavigation();
   const [busy, setBusy] = React.useState(false);
 
@@ -58,7 +58,6 @@ export default function SettingsScreen() {
     }
   }, [setMe]);
 
-  // Refresh whenever the screen gains focus
   useFocusEffect(
     React.useCallback(() => {
       load();
@@ -92,55 +91,108 @@ export default function SettingsScreen() {
   const username = pickUsername(me) || "Unknown User";
 
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView style={s.screen}>
+      {/* Header matching other screens */}
       <View style={s.header}>
+        <View style={{ width: 40 }} />
         <Text style={s.headerTitle}>Settings</Text>
+        <Image
+          source={require("../../assets/gradquest_logo.png")}
+          style={s.logo}
+        />
       </View>
 
-      <View style={s.card}>
-        <View style={s.profileRow}>
-          <Image source={{ uri: avatarSrc }} style={s.avatar} />
-          <View>
-            <Text style={s.username}>@{username}</Text>
-            <Text style={s.subtext}>Signed in</Text>
+      <View style={s.headerAccent} />
+
+      {/* Content */}
+      <View style={s.content}>
+        <View style={s.card}>
+          <View style={s.profileRow}>
+            <Image source={{ uri: avatarSrc }} style={s.avatar} />
+            <View>
+              <Text style={s.username}>@{username}</Text>
+              <Text style={s.subtext}>Signed in</Text>
+            </View>
           </View>
+
+          <Pressable style={s.primaryButton} onPress={onAdjustPreferences}>
+            <Text style={s.primaryButtonText}>Adjust Preferences</Text>
+          </Pressable>
+
+          <Pressable style={s.logoutButton} onPress={onLogout} disabled={busy}>
+            <Text style={s.logoutText}>
+              {busy ? "Logging out..." : "Log out"}
+            </Text>
+          </Pressable>
         </View>
-
-        <Pressable style={s.primaryButton} onPress={onAdjustPreferences}>
-          <Text style={s.primaryButtonText}>Adjust Preferences</Text>
-        </Pressable>
-
-        <Pressable style={s.logoutButton} onPress={onLogout} disabled={busy}>
-          <Text style={s.logoutText}>{busy ? "Logging out..." : "Log out"}</Text>
-        </Pressable>
       </View>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: PALETTE.bg, paddingHorizontal: 16, paddingVertical: 12 },
-  header: { marginBottom: 8 },
-  headerTitle: { fontSize: 24, fontWeight: "800", color: PALETTE.text },
+  screen: {
+    flex: 1,
+    backgroundColor: PALETTE.white,
+  },
+
+  header: {
+    paddingTop: 40,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
+    backgroundColor: PALETTE.white,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerAccent: {
+    height: 4,
+    backgroundColor: PALETTE.gold,
+    width: "100%",
+  },
+  logo: {
+    width: 38,
+    height: 38,
+    resizeMode: "contain",
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: PALETTE.blueDark,
+  },
+
+  content: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
 
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
+    backgroundColor: PALETTE.white,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: PALETTE.cardBorder,
     padding: 16,
-    marginTop: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
 
   profileRow: { flexDirection: "row", alignItems: "center" },
-  avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: "#eee", marginRight: 12 },
+  avatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#eee",
+    marginRight: 12,
+  },
 
-  username: { fontSize: 20, fontWeight: "800", color: PALETTE.text },
+  username: { fontSize: 20, fontWeight: "800", color: PALETTE.textDark },
   subtext: { marginTop: 2, color: PALETTE.subtext },
 
   primaryButton: {
     marginTop: 16,
-    backgroundColor: PALETTE.primary,
+    backgroundColor: PALETTE.blue,
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: "center",

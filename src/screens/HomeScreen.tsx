@@ -28,22 +28,20 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.screen}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Header */}
+      {/* Header with centered large logo */}
       <View style={styles.header}>
         <View style={{ width: 40 }} />
-        <Text style={styles.title}>GradQuest</Text>
 
-        {/* Right-aligned logo */}
         <Image
           source={require("../../assets/gradquest_logo.png")}
           style={styles.logo}
         />
+
+        <View style={{ width: 40 }} />
       </View>
 
-      {/* Yellow divider */}
       <View style={styles.headerAccent} />
 
-      {/* Intro card */}
       <View style={styles.infoCard}>
         <Text style={styles.infoText}>
           Track your grad school tasks, deadlines, and progress in one place.
@@ -51,7 +49,6 @@ export default function HomeScreen() {
         </Text>
       </View>
 
-      {/* Sign in */}
       <Pressable
         onPress={goToOAuth}
         style={({ pressed }) => [
@@ -73,12 +70,11 @@ const styles = StyleSheet.create({
     paddingTop: 40,
   },
 
-  /* Header with right logo */
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingBottom: 10,
+    marginBottom: 10,
   },
   headerAccent: {
     height: 4,
@@ -86,18 +82,14 @@ const styles = StyleSheet.create({
     width: "100%",
     marginBottom: 16,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "900",
-    color: PALETTE.blueDark,
-  },
+
+  /* MUCH bigger logo */
   logo: {
-    width: 40,
-    height: 40,
+    width: 320,
+    height: 100,
     resizeMode: "contain",
   },
 
-  /* Info/hero card */
   infoCard: {
     backgroundColor: PALETTE.white,
     borderRadius: 16,
@@ -105,7 +97,6 @@ const styles = StyleSheet.create({
     borderColor: "#DCE8F2",
     padding: 18,
     marginTop: 16,
-
     shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowRadius: 6,
@@ -117,7 +108,6 @@ const styles = StyleSheet.create({
     color: PALETTE.subtext,
   },
 
-  /* Main CTA Button */
   primaryButton: {
     marginTop: 60,
     borderRadius: 14,
