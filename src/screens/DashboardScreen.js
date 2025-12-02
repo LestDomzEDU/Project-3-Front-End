@@ -1,4 +1,9 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+} from "react";
 import {
   View,
   Text,
@@ -8,6 +13,7 @@ import {
   Modal,
   Pressable,
   Linking,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSavedApps } from "../context/SavedAppsContext";
@@ -15,19 +21,24 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const PALETTE = {
-  bg: "#FFFFFF",
-  text: "#00171F",
+  blueDark: "#053F7C",
+  blue: "#0061A8",
+  gold: "#FFC727",
+  white: "#FFFFFF",
+  textDark: "#001B33",
   subtext: "#4B5563",
+
+  // extra keys used by tutorial styles
+  bg: "#FFFFFF",
   primary: "#00A7E1",
   navy: "#003459",
-  danger: "#B00020",
   cardBorder: "#DCE8F2",
+  danger: "#B00020",
 };
 
 const TUTORIAL_KEY = "tutorial:completed";
 
 function CoachBubble({ title, body, arrowLeftPct }) {
-  // Speech-bubble style with a little arrow pointing at the tab bar
   return (
     <View style={cm.wrap} pointerEvents="box-none">
       <View style={[cm.bubble, { maxWidth: "92%" }]}>
@@ -44,15 +55,30 @@ function CoachBubble({ title, body, arrowLeftPct }) {
 export default function DashboardScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const [modelsModalVisible, setModelsModalVisible] = useState(false);
-  const { savedApps, removeSavedApp } = useSavedApps();
 
-  const topSchools = route?.params?.topSchools ?? null;
-  const dataToShow = Array.isArray(topSchools) && topSchools.length > 0 ? topSchools : savedApps || [];
+  // models / preferences UI
+  const [modelsModalVisible, setModelsModalVisible] = useState(false);
+  const [selectedCollege, setSelectedCollege] = useState(null);
+
+  // saved apps context
+  const { savedApps, addSavedApp, removeSavedApp } = useSavedApps();
+
+  // Data from Preferences/Intake
+  const topSchools = route?.params?.topSchools ?? [];
+  // Prefer topSchools from updated preferences; fall back to savedApps
+  const dataToShow =
+    Array.isArray(topSchools) && topSchools.length > 0
+      ? topSchools
+      : savedApps || [];
+
+  const openUrl = (url) =>
+    url && Linking.openURL(url).catch(() => {});
 
   // ===== Tutorial gating =====
   const [tutorialDone, setTutorialDone] = useState(false);
-  const [showTutorial, setShowTutorial] = useState(route?.params?.showTutorial === true);
+  const [showTutorial, setShowTutorial] = useState(
+    route?.params?.showTutorial === true
+  );
   const [step, setStep] = useState(0);
 
   useEffect(() => {
@@ -62,7 +88,9 @@ export default function DashboardScreen() {
         const completed = v === "1";
         setTutorialDone(completed);
         if (completed) setShowTutorial(false);
-      } catch {}
+      } catch {
+        // ignore
+      }
     })();
   }, []);
 
@@ -97,16 +125,14 @@ export default function DashboardScreen() {
     if (step < bubbles.length - 1) {
       setStep((s) => s + 1);
     } else {
-      // Final step → push to Settings, which already has the hard gate
       setShowTutorial(false);
       navigation.navigate("Settings", { tutorialMode: true });
     }
   };
 
-  const openUrl = (url) => url && Linking.openURL(url).catch(() => {});
-
   const keyForItem = useCallback(
-    (item, idx) => String(item?.id ?? item?.schoolId ?? item?.name ?? idx),
+    (item, idx) =>
+      String(item?.id ?? item?.schoolId ?? item?.name ?? idx),
     []
   );
 
@@ -114,36 +140,63 @@ export default function DashboardScreen() {
     <View style={s.empty}>
       <Text style={s.emptyTitle}>Your dashboard</Text>
       <Text style={s.emptySub}>
-        Save colleges to see them here, set reminders, and keep everything organized.
+        Save colleges to see them here, set reminders, and keep everything
+        organized.
       </Text>
     </View>
   );
 
   const renderItem = ({ item }) => {
-    const name = item?.name ?? item?.schoolName ?? item?.programName ?? "Untitled";
-    const program = item?.programName ?? item?.program ?? item?.programType ?? "Program info";
-    const website = item?.websiteUrl ?? item?.website ?? item?.link ?? null;
+    const id = item.id ?? item.schoolId ?? item.name;
+    const saved = savedApps.find((a) => a.id === id);
+
+    const name =
+      item.name ?? item.schoolName ?? item.programName ?? "Untitled";
+    const program =
+      item.programName ??
+      item.program ??
+      item.programType ??
+      "Program info";
+    const website =
+      item.websiteUrl ?? item.website ?? item.link ?? null;
 
     return (
       <View style={s.card}>
-        <Text style={s.title}>{name}</Text>
-        <Text style={s.sub}>{program}</Text>
+        <Text style={s.cardTitle}>{name}</Text>
+        <Text style={s.cardSub}>{program}</Text>
 
-        <View style={s.actionsRow}>
+        <View style={s.cardActions}>
           {website ? (
-            <Pressable style={s.linkBtn} onPress={() => openUrl(website)}>
-              <Text style={s.linkBtnText}>Visit Website</Text>
+            <Pressable
+              onPress={() => openUrl(website)}
+              style={s.primaryBtn}
+            >
+              <Text style={s.primaryBtnText}>Visit</Text>
             </Pressable>
           ) : (
-            <Text style={[s.sub, { opacity: 0.7 }]}>No website</Text>
+            <Text style={[s.cardSub, { opacity: 0.7 }]}>
+              No website
+            </Text>
           )}
 
-          <Pressable
-            style={s.removeBtn}
-            onPress={() => removeSavedApp(item?.id ?? item?.schoolId ?? item?.name)}
+          <TouchableOpacity
+            onPress={() =>
+              saved
+                ? removeSavedApp(id)
+                : addSavedApp({
+                    id,
+                    name,
+                    company: program,
+                    urgent: !!item.urgent,
+                    link: website,
+                  })
+            }
+            style={saved ? s.removeBtn : s.saveBtn}
           >
-            <Text style={s.removeBtnText}>Remove</Text>
-          </Pressable>
+            <Text style={saved ? s.removeBtnText : s.saveBtnText}>
+              {saved ? "Remove" : "Save"}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -151,36 +204,82 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView style={s.screen}>
+      {/* HEADER */}
       <View style={s.header}>
-        <View style={s.leftGroup}>
-          <TouchableOpacity onPress={() => navigation.navigate("Saved Applications")}>
-            <Text style={s.back}>Saved</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={s.h1}>Dashboard</Text>
-        <TouchableOpacity onPress={() => setModelsModalVisible(true)}>
-          <Text accessibilityRole="button" style={s.modelsLink}>Models</Text>
-        </TouchableOpacity>
+        <View style={{ width: 40 }} />
+        <Text style={s.headerTitle}>Dashboard</Text>
+        <Image
+          source={require("../../assets/gradquest_logo.png")}
+          style={s.logo}
+        />
       </View>
 
-      {Array.isArray(dataToShow) && dataToShow.length > 0 ? (
-        <FlatList
-          data={dataToShow}
-          keyExtractor={keyForItem}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
-          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-          renderItem={renderItem}
-        />
-      ) : (
-        renderEmpty()
-      )}
+      <View style={s.headerAccent} />
 
-      {/* ===== COACHMARKS & TRUE INPUT LOCK (Modal sits above the tab bar) ===== */}
-      <Modal visible={showTutorial && !tutorialDone} transparent animationType="fade">
+      {/* MAIN LIST */}
+      <FlatList
+        contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
+        data={dataToShow}
+        keyExtractor={keyForItem}
+        ListEmptyComponent={renderEmpty}
+        renderItem={renderItem}
+      />
+
+      {/* Models Modal (kept for future use) */}
+      <Modal
+        visible={modelsModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModelsModalVisible(false)}
+      >
         <View style={s.modalOverlay}>
+          <View style={s.modalContent}>
+            <Text style={s.modalTitle}>Models</Text>
 
-          {/* Bubble pointing at current tab */}
+            <Text style={{ marginBottom: 8, color: "#374151" }}>
+              {selectedCollege
+                ? `${
+                    selectedCollege.name ??
+                    selectedCollege.schoolName ??
+                    ""
+                  } — ${
+                    selectedCollege.programName ??
+                    selectedCollege.program ??
+                    ""
+                  }`
+                : ""}
+            </Text>
+
+            <FlatList
+              data={[]}
+              keyExtractor={(item) => String(item)}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={s.modelItem}
+                  onPress={() => setModelsModalVisible(false)}
+                >
+                  <Text style={s.modelText}>{item}</Text>
+                </Pressable>
+              )}
+            />
+
+            <TouchableOpacity
+              style={s.closeButton}
+              onPress={() => setModelsModalVisible(false)}
+            >
+              <Text style={s.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Tutorial overlay */}
+      <Modal
+        visible={showTutorial && !tutorialDone}
+        transparent
+        animationType="fade"
+      >
+        <View style={s.modalOverlay}>
           <View style={s.bubbleContainer} pointerEvents="none">
             <CoachBubble
               title={bubbles[step].title}
@@ -189,15 +288,15 @@ export default function DashboardScreen() {
             />
           </View>
 
-          {/* Only allowed action during tutorial */}
           <View style={s.nextContainer}>
             <Pressable style={s.nextBtn} onPress={onNext}>
               <Text style={s.nextText}>
-                {step < bubbles.length - 1 ? "Continue" : "Go to Settings"}
+                {step < bubbles.length - 1
+                  ? "Continue"
+                  : "Go to Settings"}
               </Text>
             </Pressable>
           </View>
-
         </View>
       </Modal>
     </SafeAreaView>
@@ -205,56 +304,172 @@ export default function DashboardScreen() {
 }
 
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: PALETTE.bg },
+  screen: { flex: 1, backgroundColor: PALETTE.white },
+
   header: {
-    paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6,
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingTop: 40,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
+    backgroundColor: PALETTE.white,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  leftGroup: { width: 80 },
-  back: { color: PALETTE.navy, fontWeight: "700" },
-  h1: { fontSize: 24, fontWeight: "800", color: PALETTE.text },
-  modelsLink: { color: PALETTE.primary, fontWeight: "700" },
-
-  empty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
-  emptyTitle: { fontSize: 22, fontWeight: "800", color: PALETTE.text },
-  emptySub: { marginTop: 8, fontSize: 16, color: PALETTE.subtext, textAlign: "center" },
-
-  card: { borderWidth: 1, borderColor: PALETTE.cardBorder, backgroundColor: "#fff", borderRadius: 12, padding: 16 },
-  title: { fontSize: 16, fontWeight: "800", color: PALETTE.text },
-  sub: { color: PALETTE.subtext, marginTop: 2 },
-
-  actionsRow: { flexDirection: "row", columnGap: 10, marginTop: 12, alignItems: "center" },
-  linkBtn: {
-    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1,
-    borderColor: PALETTE.cardBorder, backgroundColor: "#ECFEFF",
+  headerAccent: {
+    height: 4,
+    backgroundColor: PALETTE.gold,
+    width: "100%",
   },
-  linkBtnText: { color: PALETTE.navy, fontWeight: "600" },
+  logo: {
+    width: 38,
+    height: 38,
+    resizeMode: "contain",
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: PALETTE.blueDark,
+  },
+
+  empty: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: PALETTE.textDark,
+  },
+  emptySub: {
+    marginTop: 8,
+    fontSize: 16,
+    color: PALETTE.subtext,
+    textAlign: "center",
+  },
+
+  card: {
+    backgroundColor: PALETTE.white,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#DCE8F2",
+    marginBottom: 14,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: PALETTE.textDark,
+  },
+  cardSub: {
+    color: PALETTE.subtext,
+    marginTop: 3,
+  },
+  cardActions: {
+    flexDirection: "row",
+    marginTop: 12,
+    alignItems: "center",
+    columnGap: 10,
+  },
+
+  primaryBtn: {
+    backgroundColor: PALETTE.blue,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  primaryBtnText: {
+    color: PALETTE.white,
+    fontWeight: "700",
+  },
+
+  saveBtn: {
+    backgroundColor: "#E6F8FF",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  saveBtnText: {
+    color: PALETTE.blueDark,
+    fontWeight: "700",
+  },
   removeBtn: {
-    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1,
-    borderColor: PALETTE.cardBorder, backgroundColor: "#FFF5F6",
+    backgroundColor: "#FFF5F6",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
   },
-  removeBtnText: { color: PALETTE.danger, fontWeight: "600" },
+  removeBtnText: {
+    color: "#B00020",
+    fontWeight: "700",
+  },
 
-  // Modal overlay – blocks ALL touches including the tab bar
+  // Shared overlay for both models modal and tutorial modal
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.35)",
     justifyContent: "flex-end",
   },
-  // sits above the tab bar
+
   bubbleContainer: {
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: 72, // tweak if your tab bar is taller
+    bottom: 72,
     alignItems: "center",
   },
   nextContainer: { padding: 16, paddingBottom: 24 },
   nextBtn: {
-    backgroundColor: PALETTE.primary, borderRadius: 12, paddingVertical: 14,
+    backgroundColor: PALETTE.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
     alignItems: "center",
   },
-  nextText: { color: "#fff", fontWeight: "800", fontSize: 16 },
+  nextText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 16,
+  },
+
+  modalContent: {
+    width: "90%",
+    maxHeight: "70%",
+    alignSelf: "center",
+    marginBottom: 40,
+    backgroundColor: PALETTE.white,
+    borderRadius: 12,
+    padding: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  modelItem: {
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#eee",
+  },
+  modelText: {
+    fontSize: 16,
+  },
+  closeButton: {
+    marginTop: 12,
+    alignSelf: "flex-end",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#007AFF",
+    borderRadius: 8,
+  },
+  closeButtonText: {
+    color: PALETTE.white,
+    fontWeight: "600",
+  },
 });
 
 // ===== Coachmark bubble styles =====
@@ -267,7 +482,12 @@ const cm = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E7EB",
   },
-  title: { fontSize: 16, fontWeight: "800", color: PALETTE.text, marginBottom: 4 },
+  title: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: PALETTE.textDark,
+    marginBottom: 4,
+  },
   body: { fontSize: 14, color: PALETTE.subtext },
   arrowWrap: { width: "100%", height: 0, position: "relative" },
   arrow: {

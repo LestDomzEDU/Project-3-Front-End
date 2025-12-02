@@ -1,84 +1,124 @@
-import * as React from 'react';
-import { SafeAreaView, View, Text, Pressable, StyleSheet, StatusBar } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import * as React from "react";
+import {
+  SafeAreaView,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  StatusBar,
+  Image,
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+
+const PALETTE = {
+  blueDark: "#053F7C",
+  blue: "#0061A8",
+  gold: "#FFC727",
+  white: "#FFFFFF",
+  textDark: "#00171F",
+  subtext: "#4B5563",
+};
 
 export default function HomeScreen() {
   const navigation = useNavigation();
 
-  const goToOAuth = () => navigation.navigate('OAuth' as never);
+  const goToOAuth = () => navigation.navigate("OAuth" as never);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.screen}>
       <StatusBar barStyle="dark-content" />
+
+      {/* Header with centered large logo */}
       <View style={styles.header}>
-        <Text style={styles.title}>GradQuest</Text>
+        <View style={{ width: 40 }} />
+
+        <Image
+          source={require("../../assets/gradquest_logo.png")}
+          style={styles.logo}
+        />
+
+        <View style={{ width: 40 }} />
       </View>
 
-      <View style={styles.contentCard}>
-        <Text style={styles.description}>
-          Track your grad school tasks, deadlines, and progress in one place. Stay organized and on top of your applications with ease.
+      <View style={styles.headerAccent} />
+
+      <View style={styles.infoCard}>
+        <Text style={styles.infoText}>
+          Track your grad school tasks, deadlines, and progress in one place.
+          Stay organized and confidently manage all your applications with ease.
         </Text>
       </View>
 
-      {/* Mandatory sign-in entry point */}
       <Pressable
         onPress={goToOAuth}
-        style={({ pressed }) => [styles.primaryBtn, pressed && styles.primaryBtnPressed]}
-        accessibilityRole="button"
-        accessibilityLabel="Sign In and Continue"
-        hitSlop={6}
+        style={({ pressed }) => [
+          styles.primaryButton,
+          pressed && { opacity: 0.85 },
+        ]}
       >
-        <Text style={styles.primaryBtnText}>Sign In and Continue</Text>
+        <Text style={styles.primaryButtonText}>Sign In and Continue</Text>
       </Pressable>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
+  screen: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: PALETTE.white,
     paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingTop: 40,
   },
+
   header: {
-    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 10,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: '#00171F',
+  headerAccent: {
+    height: 4,
+    backgroundColor: PALETTE.gold,
+    width: "100%",
+    marginBottom: 16,
   },
-  contentCard: {
-    backgroundColor: '#FFFFFF',
+
+  /* MUCH bigger logo */
+  logo: {
+    width: 320,
+    height: 100,
+    resizeMode: "contain",
+  },
+
+  infoCard: {
+    backgroundColor: PALETTE.white,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#DCE8F2',
-    padding: 16,
-    marginTop: 12,
+    borderColor: "#DCE8F2",
+    padding: 18,
+    marginTop: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
-  description: {
-    fontSize: 14,
+  infoText: {
+    fontSize: 15,
     lineHeight: 22,
-    color: '#797d7e',
-    marginBottom: 16,
-    marginTop: 4,
+    color: PALETTE.subtext,
   },
-  primaryBtn: {
-    marginTop: 100,
+
+  primaryButton: {
+    marginTop: 60,
     borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'blue',
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: PALETTE.blue,
   },
-  primaryBtnPressed: {
-    opacity: 0.9,
-  },
-  primaryBtnText: {
+  primaryButtonText: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontWeight: "800",
+    color: PALETTE.white,
   },
 });

@@ -6,11 +6,12 @@ import API from "../lib/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const PALETTE = {
-  bg: "#FFFFFF",
-  text: "#000000",
+  blueDark: "#053F7C",
+  blue: "#0061A8",
+  gold: "#FFC727",
+  white: "#FFFFFF",
+  textDark: "#001B33",
   subtext: "#4B5563",
-  primary: "#00A7E1",
-  navy: "#003459",
   danger: "#B00020",
   cardBorder: "#DCE8F2",
 };
@@ -39,13 +40,6 @@ function pickAvatar(me?: AnyObj) {
   return "";
 }
 
-/**
- * Pick a display username for Settings:
- * - Prefer top-level `name` (Discord global_name / GitHub name / Google name)
- * - Then Discord attributes (global_name, username)
- * - Then login / GitHub username
- * - Finally fall back to email or "Unknown User"
- */
 function pickUsername(me?: AnyObj) {
   if (!me) return "";
 
@@ -55,9 +49,9 @@ function pickUsername(me?: AnyObj) {
       : {}) || {};
 
   const flat = first<string>(
-    me["name"] as any,                // unified display name from backend
-    attrs["global_name"] as any,      // Discord display name
-    attrs["username"] as any,         // Discord username
+    me["name"] as any,
+    attrs["global_name"] as any,
+    attrs["username"] as any,
     me["login"] as any,
     me["username"] as any,
     me["githubUsername"] as any
@@ -105,7 +99,6 @@ export default function SettingsScreen() {
     (async () => {
       const v = await AsyncStorage.getItem(TUTORIAL_KEY);
       const done = v === "1";
-      // Show gate if we were sent from tutorial AND not already complete
       setTutorialGate(fromTutorial && !done);
     })();
   }, [fromTutorial]);
@@ -126,7 +119,6 @@ export default function SettingsScreen() {
   };
 
   const onAdjustPreferences = async () => {
-    // Mark tutorial complete *as soon as* user chooses to adjust preferences
     try {
       await AsyncStorage.setItem(TUTORIAL_KEY, "1");
     } catch {}
@@ -137,15 +129,23 @@ export default function SettingsScreen() {
   const avatarSrc =
     pickAvatar(me || {}) ||
     "https://ui-avatars.com/api/?name=U&background=EEE&color=7C7C7C";
+
   const username = pickUsername(me || {}) || "Unknown User";
 
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView style={s.screen}>
+      {/* Header */}
       <View style={s.header}>
+        <View style={{ width: 40 }} />
         <Text style={s.headerTitle}>Settings</Text>
+        <Image
+          source={require("../../assets/gradquest_logo.png")}
+          style={s.logo}
+        />
       </View>
 
       <View style={s.card}>
+        {/* TOP ROW: Avatar + Username */}
         <View style={s.profileRow}>
           <Image source={{ uri: avatarSrc }} style={s.avatar} />
           <View style={{ flex: 1 }}>
@@ -154,24 +154,26 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <Pressable style={s.primaryButton} onPress={onAdjustPreferences}>
-          <Text style={s.primaryButtonText}>Adjust Preferences</Text>
-        </Pressable>
+        {/* BUTTONS VERTICAL */}
+        <View style={s.buttonColumn}>
+          <Pressable style={s.primaryButton} onPress={onAdjustPreferences}>
+            <Text style={s.primaryButtonText}>Adjust Preferences</Text>
+          </Pressable>
 
-        <Pressable style={s.logoutButton} onPress={onLogout} disabled={busy}>
-          <Text style={s.logoutText}>{busy ? "Logging out..." : "Log out"}</Text>
-        </Pressable>
+          <Pressable style={s.logoutButton} onPress={onLogout} disabled={busy}>
+            <Text style={s.logoutText}>{busy ? "Logging out..." : "Log out"}</Text>
+          </Pressable>
+        </View>
       </View>
 
-      {/* Hard gate overlay: only action is Adjust Preferences */}
+      {/* Hard Gate */}
       <Modal visible={tutorialGate} transparent animationType="fade">
         <View style={s.gateOverlay}>
           <View style={s.gateCard}>
             <Text style={s.gateTitle}>Finish setup</Text>
             <Text style={s.gateBody}>
-              To unlock the app, press{" "}
-              <Text style={{ fontWeight: "800" }}>Adjust Preferences</Text> and
-              configure your interests.
+              Press{" "}
+              <Text style={{ fontWeight: "800" }}>Adjust Preferences</Text> to complete setup.
             </Text>
             <Pressable style={s.primaryButton} onPress={onAdjustPreferences}>
               <Text style={s.primaryButtonText}>Adjust Preferences</Text>
@@ -184,27 +186,66 @@ export default function SettingsScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: PALETTE.bg, paddingHorizontal: 16, paddingVertical: 12 },
-  header: { marginBottom: 8 },
-  headerTitle: { fontSize: 24, fontWeight: "800", color: PALETTE.text },
-
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: PALETTE.cardBorder,
-    padding: 16,
+  screen: {
+    flex: 1,
+    backgroundColor: PALETTE.white,
   },
 
-  profileRow: { flexDirection: "row", alignItems: "center" },
-  avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: "#eee", marginRight: 12 },
+  header: {
+    paddingTop: 40,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
+    backgroundColor: PALETTE.white,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: PALETTE.blueDark,
+  },
+  logo: {
+    width: 38,
+    height: 38,
+    resizeMode: "contain",
+  },
 
-  username: { fontSize: 20, fontWeight: "800", color: PALETTE.text },
+  card: {
+    backgroundColor: PALETTE.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: PALETTE.cardBorder,
+    padding: 20,
+    margin: 16,
+  },
+
+  profileRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+
+  avatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#eee",
+    marginRight: 12,
+  },
+
+  username: { fontSize: 20, fontWeight: "800", color: PALETTE.textDark },
   subtext: { marginTop: 2, color: PALETTE.subtext },
 
+  /* Button column instead of horizontal buttons */
+  buttonColumn: {
+    marginTop: 10,
+    flexDirection: "column",
+    gap: 12,
+  },
+
   primaryButton: {
-    marginTop: 16,
-    backgroundColor: PALETTE.primary,
+    backgroundColor: PALETTE.blue,
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: "center",
@@ -212,7 +253,6 @@ const s = StyleSheet.create({
   primaryButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
 
   logoutButton: {
-    marginTop: 10,
     backgroundColor: "#FFF5F5",
     paddingVertical: 12,
     borderRadius: 10,
@@ -220,9 +260,12 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#FECACA",
   },
-  logoutText: { color: PALETTE.danger, fontWeight: "700", fontSize: 16 },
+  logoutText: {
+    color: PALETTE.danger,
+    fontWeight: "700",
+    fontSize: 16,
+  },
 
-  // Gate overlay styles
   gateOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",
@@ -238,6 +281,11 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E7EB",
   },
-  gateTitle: { fontSize: 20, fontWeight: "800", color: PALETTE.text, marginBottom: 8 },
+  gateTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: PALETTE.textDark,
+    marginBottom: 8,
+  },
   gateBody: { color: PALETTE.subtext, marginBottom: 16 },
 });

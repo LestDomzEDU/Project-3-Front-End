@@ -10,21 +10,45 @@ import SavedApplicationsScreen from "../screens/SavedApplicationsScreen";
 import ReminderScreen from "../screens/ReminderScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import ProfileIntake from "../screens/profileIntake";
-// (Optional) You have this file — keep it registered if you still use it
 import GoogleWelcomeScreen from "../screens/GoogleWelcomeScreen";
+import LoadingScreen from "../screens/LoadingScreen"; 
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 /**
- * Bottom tabs shown only AFTER onboarding.
- * Do not put ProfileIntake in here so tabs are hidden during intake.
+ * Bottom tabs (visible after onboarding/login)
  */
 function DashboardTabs() {
   return (
     <Tab.Navigator
-      initialRouteName="Dashboard" // ✅ was "Home" which doesn't exist in tabs
-      screenOptions={{ headerShown: false }}
+      initialRouteName="Dashboard"
+      screenOptions={{
+        headerShown: false,
+
+        // <<< --- TAB BAR COLORS --- >>>
+        tabBarStyle: {
+          backgroundColor: "#0595F2",   // deep GradQuest blue
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 8,
+          borderTopWidth: 0,
+        },
+
+        tabBarActiveTintColor: "#FFC727",   // gold text (active)
+        tabBarInactiveTintColor: "#FFE08A", // light gold for inactive
+
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "700",
+        },
+
+        // Nice gold indicator under the active tab
+        tabBarIndicatorStyle: {
+          backgroundColor: "#FFC727",
+          height: 3,
+        },
+      }}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="Saved Applications" component={SavedApplicationsScreen} />
@@ -35,20 +59,25 @@ function DashboardTabs() {
 }
 
 /**
- * Root stack controls the app flow:
- * Home -> OAuth -> ProfileIntake -> Tabs (Dashboard)
+ * Root stack controls the main app flow:
+ * Home -> OAuth -> Loading -> ProfileIntake -> Tabs (Dashboard)
  */
 export default function RootNavigator() {
   return (
-    <Stack.Navigator initialRouteName="Home" screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      initialRouteName="Home"
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      {/* Entry screen */}
       <Stack.Screen name="Home" component={HomeScreen} />
+
+      {/* OAuth login */}
       <Stack.Screen name="OAuth" component={OAuthScreen} />
+      <Stack.Screen name="Loading" component={LoadingScreen} />
+      <Stack.Screen name="ProfileIntake" component={ProfileIntake} />
       <Stack.Screen name="Tabs" component={DashboardTabs} />
-      <Stack.Screen
-        name="ProfileIntake"
-        component={ProfileIntake}
-        options={{ title: "Profile Intake" }}
-      />
       <Stack.Screen name="GoogleWelcome" component={GoogleWelcomeScreen} />
     </Stack.Navigator>
   );

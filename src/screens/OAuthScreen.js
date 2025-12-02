@@ -60,32 +60,15 @@ export default function OAuthScreen() {
   }, []);
 
   /**
-   * Finalize OAuth session:
-   *   1) Hit /oauth2/final via fetch in the app (cookies already set by WebView).
-   *   2) Call /api/me and put the result in state.
-   *
-   * Used for BOTH GitHub and Discord.
-   */
-  const finalize = React.useCallback(async () => {
-    try {
-      await fetch(API.OAUTH_FINAL, { credentials: "include" });
-    } catch (e) {
-      console.warn("OAuthScreen: fetch(OAUTH_FINAL) failed", e);
-    }
-
-    await loadMe();
-  }, [loadMe]);
-
-  /**
    * Start login for a provider: "github" or "discord".
    * Both use in-app WebView so the UX is identical.
    */
-  const startLogin = React.useCallback(async (provider) => {
+  const startLogin = React.useCallback((provider) => {
     const base =
       provider === "github" ? API.LOGIN_GITHUB : API.LOGIN_DISCORD;
 
-    // Force re-login each time for clarity
-    const url = `${base}?prompt=login`;
+    // Use the base URL directly (no extra query params)
+    const url = base;
 
     setLoginUrl(url);
     setShowWeb(true);
@@ -94,22 +77,24 @@ export default function OAuthScreen() {
 
   /**
    * WebView navigation handler.
-   * Once we see /oauth2/final, we close the WebView and finalize.
+   * Once we see /oauth2/final, we close the WebView and fetch /api/me.
    */
   const onWebNav = React.useCallback(
     async (navState) => {
       const url = navState?.url || "";
+      console.log("[OAuth WebView] url:", url);
       if (url.startsWith(API.OAUTH_FINAL)) {
         setShowWeb(false);
         setLoading(true);
         try {
-          await finalize();
+          // Session is already established by the WebView hitting /oauth2/final
+          await loadMe();
         } finally {
           setLoading(false);
         }
       }
     },
-    [finalize]
+    [loadMe]
   );
 
   /**
@@ -171,14 +156,18 @@ export default function OAuthScreen() {
         </View>
       )}
 
-      {loading && <ActivityIndicator size="large" style={{ marginTop: 20 }} />}
+      {loading && (
+        <ActivityIndicator size="large" style={{ marginTop: 20 }} />
+      )}
 
       {/* Post-login confirmation */}
       {isAuthed && !showWeb && (
         <View style={{ alignItems: "center", width: "100%" }}>
-          {hasAvatar && <Image source={{ uri: avatarUri }} style={styles.avatar} />}
+          {hasAvatar && (
+            <Image source={{ uri: avatarUri }} style={styles.avatar} />
+          )}
           <Text style={styles.title}>You are authenticated</Text>
-          {me.name ? <Text style={styles.sub}>{me.name}</Text> : null}
+          {me?.name ? <Text style={styles.sub}>{me.name}</Text> : null}
           <Pressable
             onPress={onContinue}
             style={({ pressed }) => [
@@ -198,10 +187,10 @@ export default function OAuthScreen() {
           <WebView
             key={webKey}
             source={{ uri: loginUrl }}
-            incognito
-            cacheEnabled={false}
-            sharedCookiesEnabled={false}
-            thirdPartyCookiesEnabled={false}
+            originWhitelist={["*"]}
+            javaScriptEnabled
+            sharedCookiesEnabled
+            thirdPartyCookiesEnabled
             onNavigationStateChange={onWebNav}
             startInLoadingState
           />
