@@ -411,8 +411,8 @@ const s = StyleSheet.create({
     width: "100%",
   },
   logo: {
-    width: 38,
-    height: 38,
+    width: 52,
+    height: 52,
     resizeMode: "contain",
   },
   headerTitle: {
