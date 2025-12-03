@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Image,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { WebView } from "react-native-webview";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -15,19 +16,28 @@ import API from "../lib/api";
 
 const TUTORIAL_KEY = "tutorial:completed";
 
+const PALETTE = {
+  white: "#FFFFFF",
+  blueDark: "#053F7C",
+  blue: "#0061A8",
+  blueSoft: "#E5F3FF",
+  grayText: "#6B7280",
+  gold: "#FFC727",
+
+  githubBg: "#C7C7C7",
+  discordBg: "#0D0D0D",
+};
+
 export default function OAuthScreen() {
   const navigation = useNavigation();
 
   const [me, setMe] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
 
-  // WebView is used for BOTH GitHub and Discord flows
   const [showWeb, setShowWeb] = React.useState(false);
   const [loginUrl, setLoginUrl] = React.useState(null);
   const [webKey, setWebKey] = React.useState(0);
 
-  // When we arrive at OAuth, always log out on the server
-  // so the user must sign in again.
   React.useEffect(() => {
     (async () => {
       try {
@@ -43,15 +53,10 @@ export default function OAuthScreen() {
     })();
   }, []);
 
-  /**
-   * Load /api/me and put it into local state.
-   * Called after we believe OAuth has completed.
-   */
   const loadMe = React.useCallback(async () => {
     try {
       const res = await fetch(API.ME, { credentials: "include" });
       const data = await res.json();
-      console.log("OAuthScreen /api/me:", data);
       setMe(data);
     } catch (e) {
       console.warn("OAuthScreen: failed to load /api/me", e);
@@ -59,35 +64,23 @@ export default function OAuthScreen() {
     }
   }, []);
 
-  /**
-   * Start login for a provider: "github" or "discord".
-   * Both use in-app WebView so the UX is identical.
-   */
   const startLogin = React.useCallback((provider) => {
     const base =
       provider === "github" ? API.LOGIN_GITHUB : API.LOGIN_DISCORD;
 
-    // Use the base URL directly (no extra query params)
     const url = base;
-
     setLoginUrl(url);
     setShowWeb(true);
     setWebKey((k) => k + 1);
   }, []);
 
-  /**
-   * WebView navigation handler.
-   * Once we see /oauth2/final, we close the WebView and fetch /api/me.
-   */
   const onWebNav = React.useCallback(
     async (navState) => {
       const url = navState?.url || "";
-      console.log("[OAuth WebView] url:", url);
       if (url.startsWith(API.OAUTH_FINAL)) {
         setShowWeb(false);
         setLoading(true);
         try {
-          // Session is already established by the WebView hitting /oauth2/final
           await loadMe();
         } finally {
           setLoading(false);
@@ -97,16 +90,10 @@ export default function OAuthScreen() {
     [loadMe]
   );
 
-  /**
-   * Continue into the app after we have a user.
-   * Still clears the tutorial flag like before.
-   */
   const onContinue = React.useCallback(async () => {
     try {
       await AsyncStorage.removeItem(TUTORIAL_KEY);
-    } catch (e) {
-      console.warn("OAuthScreen: failed to clear tutorial key", e);
-    }
+    } catch (e) {}
 
     navigation.navigate("Tabs", {
       screen: "Dashboard",
@@ -115,148 +102,262 @@ export default function OAuthScreen() {
   }, [navigation]);
 
   const avatarUri =
-    (me &&
-      (me.avatarUrl ||
-        me.avatar_url ||
-        me.picture ||
-        me.avatar)) ||
-    null;
-  const hasAvatar = !!avatarUri;
-  const isAuthed = !!me && me.authenticated === true;
+    me?.avatarUrl || me?.avatar_url || me?.picture || me?.avatar || null;
+
+  const isAuthed = !!me && me.authenticated;
 
   return (
-    <View style={styles.container}>
-      {/* Provider selection (only when not authenticated and no WebView) */}
-      {!isAuthed && !showWeb && (
-        <View style={{ width: "100%" }}>
-          <Text style={styles.title}>Sign in</Text>
-          <Text style={styles.sub}>Choose a provider to continue.</Text>
+    <SafeAreaView style={styles.screen}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={{ width: 40 }} />
+        <Text style={styles.headerTitle}>Sign in</Text>
+        <Image
+          source={require("../../assets/gradquest_logo.png")}
+          style={styles.logo}
+        />
+      </View>
 
-          <Pressable
-            onPress={() => startLogin("github")}
-            style={({ pressed }) => [
-              styles.oauthBtn,
-              styles.github,
-              pressed && { opacity: 0.9 },
-            ]}
-          >
-            <Text style={styles.oauthBtnText}>Continue with GitHub</Text>
-          </Pressable>
+      <View style={styles.headerAccent} />
 
-          <Pressable
-            onPress={() => startLogin("discord")}
-            style={({ pressed }) => [
-              styles.oauthBtn,
-              styles.discord,
-              pressed && { opacity: 0.9 },
-            ]}
-          >
-            <Text style={styles.oauthBtnText}>Continue with Discord</Text>
-          </Pressable>
-        </View>
-      )}
+      <View style={styles.content}>
+        {!isAuthed && !showWeb && (
+          <View style={styles.card}>
+            <Text style={styles.title}>Welcome back</Text>
+            <Text style={styles.sub}>
+              Choose a provider to continue to your dashboard.
+            </Text>
+            <Text style={styles.subLabel}>Sign in with:</Text>
 
-      {loading && (
-        <ActivityIndicator size="large" style={{ marginTop: 20 }} />
-      )}
+            {/* GitHub button */}
+            <Pressable
+              onPress={() => startLogin("github")}
+              style={({ pressed }) => [
+                styles.oauthBtn,
+                styles.githubBtn,
+                pressed && { opacity: 0.9 },
+              ]}
+            >
+              <Image
+                source={require("../../assets/github_horizontal.png")}
+                style={styles.horizontalLogo}
+              />
+            </Pressable>
 
-      {/* Post-login confirmation */}
-      {isAuthed && !showWeb && (
-        <View style={{ alignItems: "center", width: "100%" }}>
-          {hasAvatar && (
-            <Image source={{ uri: avatarUri }} style={styles.avatar} />
-          )}
-          <Text style={styles.title}>You are authenticated</Text>
-          {me?.name ? <Text style={styles.sub}>{me.name}</Text> : null}
-          <Pressable
-            onPress={onContinue}
-            style={({ pressed }) => [
-              styles.primaryBtn,
-              pressed && { opacity: 0.9 },
-              { marginTop: 16 },
-            ]}
-          >
-            <Text style={styles.primaryBtnText}>Continue</Text>
-          </Pressable>
-        </View>
-      )}
+            <Text style={styles.orText}>--- or ---</Text>
 
-      {/* WebView login for GitHub & Discord */}
-      {showWeb && loginUrl && (
-        <View style={{ flex: 1, width: "100%" }}>
-          <WebView
-            key={webKey}
-            source={{ uri: loginUrl }}
-            originWhitelist={["*"]}
-            javaScriptEnabled
-            sharedCookiesEnabled
-            thirdPartyCookiesEnabled
-            onNavigationStateChange={onWebNav}
-            startInLoadingState
-          />
-        </View>
-      )}
-    </View>
+            {/* Discord button */}
+            <Pressable
+              onPress={() => startLogin("discord")}
+              style={({ pressed }) => [
+                styles.oauthBtn,
+                styles.discordBtn,
+                pressed && { opacity: 0.9 },
+              ]}
+            >
+              <Image
+                source={require("../../assets/discord_horizontal.png")}
+                style={styles.horizontalLogo}
+              />
+            </Pressable>
+          </View>
+        )}
+
+        {/* Loading indicator */}
+        {loading && (
+          <ActivityIndicator size="large" style={{ marginTop: 20 }} />
+        )}
+
+        {/* After login */}
+        {isAuthed && !showWeb && (
+          <View style={styles.card}>
+            {avatarUri && (
+              <Image source={{ uri: avatarUri }} style={styles.avatar} />
+            )}
+            <Text style={styles.title}>You’re signed in</Text>
+
+            {me?.name ? (
+              <Text style={styles.sub}>Welcome, {me.name}!</Text>
+            ) : (
+              <Text style={styles.sub}>
+                Your session has been created successfully.
+              </Text>
+            )}
+
+            <Pressable
+              onPress={onContinue}
+              style={({ pressed }) => [
+                styles.primaryBtn,
+                pressed && { opacity: 0.9 },
+              ]}
+            >
+              <Text style={styles.primaryBtnText}>Continue to dashboard</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {/* WebView for OAuth */}
+        {showWeb && loginUrl && (
+          <View style={styles.webContainer}>
+            <WebView
+              key={webKey}
+              source={{ uri: loginUrl }}
+              originWhitelist={["*"]}
+              javaScriptEnabled
+              sharedCookiesEnabled
+              thirdPartyCookiesEnabled
+              onNavigationStateChange={onWebNav}
+              startInLoadingState
+            />
+          </View>
+        )}
+      </View>
+    </SafeAreaView>
   );
 }
 
+/* ==============================
+   STYLES
+   ============================== */
+
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
+    backgroundColor: PALETTE.white,
+  },
+
+  header: {
+    paddingTop: 40,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
+    backgroundColor: PALETTE.white,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-start",
-    padding: 20,
-    backgroundColor: "#ffffff",
+    justifyContent: "space-between",
   },
+
+  headerAccent: {
+    height: 4,
+    backgroundColor: PALETTE.gold,
+    width: "100%",
+  },
+
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: PALETTE.blueDark,
+  },
+
+  /* Bigger logo */
+  logo: {
+    width: 72,
+    height: 72,
+    resizeMode: "contain",
+  },
+
+  /* Center the card vertically */
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+    justifyContent: "center",
+  marginTop: -100,   // move card UP (adjust this number as needed)
+  },
+
+  card: {
+    width: "100%",
+    backgroundColor: PALETTE.white,
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 22,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+    elevation: 4,
+  },
+
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "700",
-    marginBottom: 8,
-    marginTop: 8,
+    marginBottom: 6,
     textAlign: "center",
+    color: PALETTE.blueDark,
   },
+
   sub: {
     fontSize: 14,
-    color: "#6B7280",
-    marginBottom: 12,
+    color: PALETTE.grayText,
+    marginBottom: 4,
     textAlign: "center",
   },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    marginBottom: 8,
-    backgroundColor: "#eeeeee",
+
+  subLabel: {
+    fontSize: 13,
+    color: PALETTE.grayText,
+    marginBottom: 14,
+    textAlign: "center",
   },
+
   oauthBtn: {
     width: "100%",
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 18,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderRadius: 12,
     alignItems: "center",
+    justifyContent: "center",
     marginBottom: 10,
   },
-  github: {
-    backgroundColor: "#111827",
+
+  githubBtn: {
+    backgroundColor: PALETTE.githubBg,
   },
-  discord: {
-    backgroundColor: "#5865F2",
+
+  discordBtn: {
+    backgroundColor: PALETTE.discordBg,
   },
-  oauthBtnText: {
-    color: "#ffffff",
-    fontWeight: "700",
+
+  horizontalLogo: {
+    width: "70%",
+    height: 28,
+    resizeMode: "contain",
   },
+
+  orText: {
+    textAlign: "center",
+    color: PALETTE.grayText,
+    fontSize: 12,
+    marginVertical: 6,
+  },
+
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    marginBottom: 12,
+    alignSelf: "center",
+    backgroundColor: "#eeeeee",
+  },
+
   primaryBtn: {
+    marginTop: 14,
     paddingVertical: 14,
     paddingHorizontal: 18,
-    borderRadius: 10,
-    backgroundColor: "#00A7E1",
+    borderRadius: 12,
+    backgroundColor: PALETTE.blue,
     alignItems: "center",
   },
+
   primaryBtnText: {
-    color: "#ffffff",
+    color: PALETTE.white,
     fontWeight: "700",
+    fontSize: 15,
+  },
+
+  webContainer: {
+    flex: 1,
+    marginTop: 8,
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: PALETTE.blueSoft,
   },
 });
