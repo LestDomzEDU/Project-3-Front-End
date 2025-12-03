@@ -11,71 +11,49 @@ import ReminderScreen from "../screens/ReminderScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import ProfileIntake from "../screens/profileIntake";
 import GoogleWelcomeScreen from "../screens/GoogleWelcomeScreen";
-import LoadingScreen from "../screens/LoadingScreen"; 
+import LoadingScreen from "../screens/LoadingScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-/**
- * Bottom tabs (visible after onboarding/login)
- */
 function DashboardTabs() {
   return (
     <Tab.Navigator
       initialRouteName="Dashboard"
       screenOptions={{
         headerShown: false,
-
-        // <<< --- TAB BAR COLORS --- >>>
-        tabBarStyle: {
-          backgroundColor: "#0595F2",   // deep GradQuest blue
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
-          borderTopWidth: 0,
-        },
-
-        tabBarActiveTintColor: "#FFC727",   // gold text (active)
-        tabBarInactiveTintColor: "#FFE08A", // light gold for inactive
-
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "700",
-        },
-
-        // Nice gold indicator under the active tab
-        tabBarIndicatorStyle: {
-          backgroundColor: "#FFC727",
-          height: 3,
-        },
       }}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Saved Applications" component={SavedApplicationsScreen} />
+      <Tab.Screen
+        name="SavedApplications"
+        component={SavedApplicationsScreen}
+        options={{ title: "Saved" }}
+      />
       <Tab.Screen name="Reminders" component={ReminderScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
 }
 
-/**
- * Root stack controls the main app flow:
- * Home -> OAuth -> Loading -> ProfileIntake -> Tabs (Dashboard)
- */
 export default function RootNavigator() {
   return (
     <Stack.Navigator
-      initialRouteName="Home"
+      initialRouteName="Loading"
       screenOptions={{
         headerShown: false,
       }}
     >
+      {/* Splash / loading at app launch */}
+      <Stack.Screen name="Loading" component={LoadingScreen} />
+
       {/* Entry screen */}
       <Stack.Screen name="Home" component={HomeScreen} />
 
       {/* OAuth login */}
       <Stack.Screen name="OAuth" component={OAuthScreen} />
-      <Stack.Screen name="Loading" component={LoadingScreen} />
+
+      {/* Onboarding & main app */}
       <Stack.Screen name="ProfileIntake" component={ProfileIntake} />
       <Stack.Screen name="Tabs" component={DashboardTabs} />
       <Stack.Screen name="GoogleWelcome" component={GoogleWelcomeScreen} />
