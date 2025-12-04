@@ -18,6 +18,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSavedApps } from "../context/SavedAppsContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useAuth } from "../context/AuthContext";
+import API from "../lib/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const PALETTE = {
@@ -61,11 +63,98 @@ export default function DashboardScreen() {
   const [selectedCollege, setSelectedCollege] = useState(null);
 
   // saved apps context
+  // saved apps context
   const { savedApps, addSavedApp, removeSavedApp } = useSavedApps();
 
-  // Data from Preferences/Intake
-  const topSchools = route?.params?.topSchools ?? [];
-  // Prefer topSchools from updated preferences; fall back to savedApps
+  // Auth + preference-based recommendations
+  const { me, refresh } = useAuth();
+
+  // Any top schools passed in via navigation (e.g., after saving preferences)
+  const routeTopSchools = route?.params?.topSchools ?? null;
+
+  // Local state for the recommendations shown on the dashboard
+  const [topSchools, setTopSchools] = useState(
+    Array.isArray(routeTopSchools) ? routeTopSchools : []
+  );
+  const [loadingTop, setLoadingTop] = useState(false);
+
+  // Keep local state in sync when we navigate here with fresh results
+  useEffect(() => {
+    if (Array.isArray(routeTopSchools) && routeTopSchools.length > 0) {
+      setTopSchools(routeTopSchools);
+    }
+  }, [routeTopSchools]);
+
+  // On first load after authentication, fetch the user's top 5 schools
+  // using the preferences already saved from Profile Intake.
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchTopSchools = async () => {
+      // If we already have results from navigation, don't refetch.
+      if (Array.isArray(routeTopSchools) && routeTopSchools.length > 0) {
+        return;
+      }
+
+      try {
+        setLoadingTop(true);
+
+        let currentMe = me;
+        // Make sure we have an up-to-date user object
+        if (
+          (!currentMe ||
+            !currentMe.authenticated ||
+            (!currentMe.userId && !currentMe.id)) &&
+          typeof refresh === "function"
+        ) {
+          try {
+            currentMe = await refresh();
+          } catch (e) {
+            console.warn("Dashboard: failed to refresh auth", e);
+          }
+        }
+
+        const userId = currentMe?.userId || currentMe?.id;
+        if (!userId) {
+          return;
+        }
+
+        const url = `${API.BASE}/api/schools/top5?userId=${userId}`;
+        const res = await fetch(url, { credentials: "include" });
+
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          console.warn(
+            "Dashboard: failed to fetch top schools",
+            res.status,
+            text
+          );
+          return;
+        }
+
+        const json = await res.json();
+        if (!cancelled && Array.isArray(json) && json.length > 0) {
+          setTopSchools(json);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.warn("Dashboard: error fetching top schools", err);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingTop(false);
+        }
+      }
+    };
+
+    fetchTopSchools();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [me, refresh, routeTopSchools]);
+
+  // Prefer top schools from profile preferences; fall back to saved apps
   const dataToShow =
     Array.isArray(topSchools) && topSchools.length > 0
       ? topSchools
@@ -75,6 +164,7 @@ export default function DashboardScreen() {
     url && Linking.openURL(url).catch(() => {});
 
   // ===== Tutorial gating =====
+
   const [tutorialDone, setTutorialDone] = useState(false);
   const [showTutorial, setShowTutorial] = useState(
     route?.params?.showTutorial === true
@@ -321,8 +411,8 @@ const s = StyleSheet.create({
     width: "100%",
   },
   logo: {
-    width: 38,
-    height: 38,
+    width: 52,
+    height: 52,
     resizeMode: "contain",
   },
   headerTitle: {

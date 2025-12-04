@@ -85,8 +85,8 @@ const styles = StyleSheet.create({
 
   /* MUCH bigger logo */
   logo: {
-    width: 320,
-    height: 100,
+    width: 250,
+    height: 250,
     resizeMode: "contain",
   },
 

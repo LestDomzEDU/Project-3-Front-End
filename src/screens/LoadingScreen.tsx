@@ -1,9 +1,9 @@
 import React, { useEffect } from "react";
-import { View, Image, StyleSheet } from "react-native";
+import { Image, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 
-// 🎨 Define a simple color palette for consistency
+// 🎨 Simple color palette
 const PALETTE = {
   bg: "#FFFFFF",
 };
@@ -13,8 +13,9 @@ export default function LoadingScreen() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      navigation.navigate("Tabs" as never); // "Tabs" goes to your Dashboard tab
-    }, 2000);
+      // After 5 seconds, send the user to the Home screen
+      navigation.navigate("Home" as never);
+    }, 5000);
 
     return () => clearTimeout(timer);
   }, [navigation]);
@@ -23,7 +24,7 @@ export default function LoadingScreen() {
     <SafeAreaView style={styles.container}>
       {/* Your logo or splash image */}
       <Image
-        source={require("../../assets/gradquest_logo.png")} 
+        source={require("../../assets/gradquest_logo.png")}
         style={styles.logo}
         resizeMode="contain"
       />

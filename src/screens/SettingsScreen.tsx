@@ -135,16 +135,18 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={s.screen}>
       {/* Header */}
-      <View style={s.header}>
-        <View style={{ width: 40 }} />
-        <Text style={s.headerTitle}>Settings</Text>
-        <Image
-          source={require("../../assets/gradquest_logo.png")}
-          style={s.logo}
-        />
-      </View>
+    <View style={s.header}>
+      <View style={{ width: 40 }} />
+      <Text style={s.headerTitle}>Settings</Text>
+      <Image
+        source={require("../../assets/gradquest_logo.png")}
+        style={s.logo}
+      />
+    </View>
 
-      <View style={s.card}>
+    <View style={s.headerAccent} />
+
+    <View style={s.card}>
         {/* TOP ROW: Avatar + Username */}
         <View style={s.profileRow}>
           <Image source={{ uri: avatarSrc }} style={s.avatar} />
@@ -200,16 +202,22 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  headerAccent: {
+    height: 4,
+    backgroundColor: PALETTE.gold,
+    width: "100%",
+  },
   headerTitle: {
     fontSize: 24,
     fontWeight: "800",
     color: PALETTE.blueDark,
   },
   logo: {
-    width: 38,
-    height: 38,
+    width: 52,   // ← was 38
+    height: 52,  // ← was 38
     resizeMode: "contain",
   },
+
 
   card: {
     backgroundColor: PALETTE.white,
