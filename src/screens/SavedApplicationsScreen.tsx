@@ -8,6 +8,7 @@ import {
   Linking,
   Image,
 } from "react-native";
+import { useSavedApps } from "../context/SavedAppsContext";
 
 const PALETTE = {
   blueDark: "#053F7C",
@@ -19,47 +20,37 @@ const PALETTE = {
 };
 
 export default function SavedApplicationsScreen() {
-  const apps = [
-    {
-      id: "1",
-      name: "AI Research Fellowship",
-      company: "OpenAI Scholars",
-      urgent: true,
-      link: "https://example.com",
-    },
-    {
-      id: "2",
-      name: "Graduate Data Science Internship",
-      company: "DataQuest Labs",
-      urgent: false,
-      link: "https://example.com",
-    },
-    {
-      id: "3",
-      name: "PhD Program in ML",
-      company: "TechU",
-      urgent: true,
-      link: "https://example.com",
-    },
-  ];
+  const { savedApps, removeSavedApp } = useSavedApps();
 
   const renderItem = ({ item }) => (
     <View style={s.card}>
-      {item.urgent && <Text style={s.urgent}>❗</Text>}
+      {/* {item.urgent && <Text style={s.urgent}>❗</Text>} */}
 
       <View style={{ flex: 1 }}>
         <Text style={s.cardTitle}>{item.name}</Text>
         <Text style={s.cardSub}>{item.company}</Text>
       </View>
 
-      <Pressable style={s.applyBtn} onPress={() => Linking.openURL(item.link)}>
-        <Text style={s.applyBtnText}>Apply</Text>
+      {/* Visit Button */}
+      {item.link ? (
+        <Pressable style={s.visitBtn} onPress={() => Linking.openURL(item.link)}>
+          <Text style={s.visitBtnText}>Visit</Text>
+        </Pressable>
+      ) : null}
+
+      {/* Remove Button */}
+      <Pressable
+        style={s.removeBtn}
+        onPress={() => removeSavedApp(item.id)}
+      >
+        <Text style={s.removeBtnText}>Remove</Text>
       </Pressable>
     </View>
   );
 
   return (
     <View style={s.screen}>
+      {/* HEADER */}
       <View style={s.header}>
         <View style={{ width: 40 }} />
         <Text style={s.headerTitle}>Saved Apps</Text>
@@ -68,15 +59,21 @@ export default function SavedApplicationsScreen() {
           style={s.logo}
         />
       </View>
-
       <View style={s.headerAccent} />
-
-      <FlatList
-        contentContainerStyle={{ padding: 16 }}
-        data={apps}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-      />
+      
+      {savedApps.length === 0 ? (
+        <View style={s.emptyContainer}>
+          <Text style={s.emptyTitle}>No Saved Applications</Text>
+          <Text style={s.emptySubtitle}>Tap “Save” on any college to track it here.</Text>
+        </View>
+      ) : (
+        <FlatList
+          contentContainerStyle={{ padding: 16 }}
+          data={savedApps}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+        />
+      )}
     </View>
   );
 }
@@ -111,6 +108,21 @@ const s = StyleSheet.create({
     fontWeight: "800",
     color: PALETTE.blueDark,
   },
+  emptyContainer: {
+    padding: 40,
+    alignItems: "center",
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: PALETTE.textDark,
+  },
+  emptySubtitle: {
+    marginTop: 8,
+    fontSize: 14,
+    color: PALETTE.subtext,
+    textAlign: "center",
+  },
   card: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -144,6 +156,26 @@ const s = StyleSheet.create({
   },
   applyBtnText: {
     color: PALETTE.white,
+    fontWeight: "700",
+  },
+  visitBtn: {
+    backgroundColor: PALETTE.blue,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+  },
+  visitBtnText: {
+    color: PALETTE.white,
+    fontWeight: "700",
+  },
+  removeBtn: {
+    backgroundColor: "#FFE8E8",
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+  },
+  removeBtnText: {
+    // color: PALETTE.danger,
     fontWeight: "700",
   },
 });

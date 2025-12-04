@@ -2,8 +2,8 @@ import { createContext, useContext, useState } from "react";
 
 const SavedAppsContext = createContext({
   savedApps: [],
-  addSavedApp: () => {},
-  removeSavedApp: () => {},
+  addSavedApp: (app) => {},
+  removeSavedApp: (id) => {},
 });
 
 export function SavedAppsProvider({ children }) {
