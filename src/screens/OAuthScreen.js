@@ -7,6 +7,8 @@ import {
   Pressable,
   ActivityIndicator,
   Image,
+  Platform,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -64,10 +66,18 @@ export default function OAuthScreen() {
     }
   }, []);
 
+  // Platform-aware login: use WebView on native, open URL directly on web
   const startLogin = React.useCallback((provider) => {
     const base =
       provider === "github" ? API.LOGIN_GITHUB : API.LOGIN_DISCORD;
 
+    if (Platform.OS === "web") {
+      // On web, open the OAuth URL in the browser instead of using WebView
+      Linking.openURL(base);
+      return;
+    }
+
+    // On native platforms, use the in-app WebView
     const url = base;
     setLoginUrl(url);
     setShowWeb(true);
@@ -196,8 +206,8 @@ export default function OAuthScreen() {
           </View>
         )}
 
-        {/* WebView for OAuth */}
-        {showWeb && loginUrl && (
+        {/* WebView for OAuth (native platforms only) */}
+        {Platform.OS !== "web" && showWeb && loginUrl && (
           <View style={styles.webContainer}>
             <WebView
               key={webKey}
@@ -260,7 +270,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     justifyContent: "center",
-  marginTop: -100,   // move card UP (adjust this number as needed)
+    marginTop: -100, // move card UP (adjust this number as needed)
   },
 
   card: {
