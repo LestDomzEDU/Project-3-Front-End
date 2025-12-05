@@ -12,6 +12,8 @@ import SettingsScreen from "../screens/SettingsScreen";
 import ProfileIntake from "../screens/profileIntake";
 import GoogleWelcomeScreen from "../screens/GoogleWelcomeScreen";
 import LoadingScreen from "../screens/LoadingScreen";
+import UploadResume from "../screens/UploadResume";
+import GenerateSOPScreen from "../screens/GenerateSOPScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -31,6 +33,7 @@ function DashboardTabs() {
         options={{ title: "Saved" }}
       />
       <Tab.Screen name="Reminders" component={ReminderScreen} />
+      <Tab.Screen name="UploadResume" component={UploadResume} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
@@ -56,6 +59,7 @@ export default function RootNavigator() {
       {/* Onboarding & main app */}
       <Stack.Screen name="ProfileIntake" component={ProfileIntake} />
       <Stack.Screen name="Tabs" component={DashboardTabs} />
+      <Stack.Screen name="GenerateSOPScreen" component={GenerateSOPScreen} />
       <Stack.Screen name="GoogleWelcome" component={GoogleWelcomeScreen} />
     </Stack.Navigator>
   );
