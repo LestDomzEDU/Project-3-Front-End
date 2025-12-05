@@ -348,7 +348,11 @@ export default function ProfileIntake() {
       if (!userId) {
         throw new Error("User not authenticated. Please log in first.");
       }
-      console.log("Using userId:", userId);
+      const userIdNum = Number(userId);
+      if (!Number.isFinite(userIdNum)) {
+        throw new Error(`Invalid userId: ${userId} (expected a number)`);
+      }
+      console.log("Using userId:", userIdNum);
 
       // 2) Map UI → backend StudentPreference fields + enums
       const prefPayload: any = {
@@ -372,12 +376,15 @@ export default function ProfileIntake() {
             ? "HYBRID"
             : "ONLINE",
         gpa: finalGpa,
-        // RequirementType: CAPSTONE or NONE (adjust for your server)
+        // RequirementType: CAPSTONE or NEITHER (adjust for your server)
         requirementType: capstone ? "CAPSTONE" : "NEITHER",
       };
 
+      console.log("Sending preferences payload:", JSON.stringify(prefPayload, null, 2));
+
       // 3) Save/Upsert preferences (POST)
-      const saveUrl = `${API.BASE}/api/preferences?userId=${userId}`;
+      const saveUrl = `${API.BASE}/api/preferences?userId=${userIdNum}`;
+      console.log("POST to:", saveUrl);
       const saveRes = await fetch(saveUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -387,6 +394,7 @@ export default function ProfileIntake() {
 
       if (!saveRes.ok) {
         const text = await saveRes.text().catch(() => "");
+        console.error("Backend response:", saveRes.status, text);
         throw new Error(
           `Failed to save preferences: ${saveRes.status} ${text}`
         );
