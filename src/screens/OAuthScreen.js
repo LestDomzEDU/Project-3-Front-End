@@ -40,6 +40,10 @@ export default function OAuthScreen() {
   const [loginUrl, setLoginUrl] = React.useState(null);
   const [webKey, setWebKey] = React.useState(0);
 
+  // For web polling after redirect
+  const webPollRef = React.useRef(null);
+
+  // On mount: make sure we start logged out
   React.useEffect(() => {
     (async () => {
       try {
@@ -53,6 +57,14 @@ export default function OAuthScreen() {
         setWebKey((k) => k + 1);
       }
     })();
+
+    // Cleanup polling timer if screen unmounts
+    return () => {
+      if (webPollRef.current) {
+        clearInterval(webPollRef.current);
+        webPollRef.current = null;
+      }
+    };
   }, []);
 
   const loadMe = React.useCallback(async () => {
@@ -60,30 +72,47 @@ export default function OAuthScreen() {
       const res = await fetch(API.ME, { credentials: "include" });
       const data = await res.json();
       setMe(data);
+      return data;
     } catch (e) {
       console.warn("OAuthScreen: failed to load /api/me", e);
       setMe(null);
+      return null;
     }
   }, []);
 
-  // Platform-aware login: use WebView on native, open URL directly on web
-  const startLogin = React.useCallback((provider) => {
-    const base =
-      provider === "github" ? API.LOGIN_GITHUB : API.LOGIN_DISCORD;
+  // Start login: platform-specific
+  const startLogin = React.useCallback(
+    (provider) => {
+      const base =
+        provider === "github" ? API.LOGIN_GITHUB : API.LOGIN_DISCORD;
 
-    if (Platform.OS === "web") {
-      // On web, open the OAuth URL in the browser instead of using WebView
-      Linking.openURL(base);
-      return;
-    }
+      // WEB: open OAuth in a new tab & start polling /api/me
+      if (Platform.OS === "web") {
+        Linking.openURL(base);
 
-    // On native platforms, use the in-app WebView
-    const url = base;
-    setLoginUrl(url);
-    setShowWeb(true);
-    setWebKey((k) => k + 1);
-  }, []);
+        // Avoid multiple intervals if user taps twice
+        if (!webPollRef.current) {
+          webPollRef.current = setInterval(async () => {
+            const data = await loadMe();
+            if (data && data.authenticated) {
+              clearInterval(webPollRef.current);
+              webPollRef.current = null;
+            }
+          }, 2000); // check every 2 seconds
+        }
 
+        return;
+      }
+
+      // NATIVE: use WebView inside the app
+      setLoginUrl(base);
+      setShowWeb(true);
+      setWebKey((k) => k + 1);
+    },
+    [loadMe]
+  );
+
+  // Native WebView navigation handler
   const onWebNav = React.useCallback(
     async (navState) => {
       const url = navState?.url || "";
@@ -131,6 +160,7 @@ export default function OAuthScreen() {
       <View style={styles.headerAccent} />
 
       <View style={styles.content}>
+        {/* Login options (no active WebView, not yet authed) */}
         {!isAuthed && !showWeb && (
           <View style={styles.card}>
             <Text style={styles.title}>Welcome back</Text>
@@ -173,12 +203,12 @@ export default function OAuthScreen() {
           </View>
         )}
 
-        {/* Loading indicator */}
+        {/* Loading spinner */}
         {loading && (
           <ActivityIndicator size="large" style={{ marginTop: 20 }} />
         )}
 
-        {/* After login */}
+        {/* After successful login */}
         {isAuthed && !showWeb && (
           <View style={styles.card}>
             {avatarUri && (
@@ -206,7 +236,7 @@ export default function OAuthScreen() {
           </View>
         )}
 
-        {/* WebView for OAuth (native platforms only) */}
+        {/* WebView for OAuth — native platforms only */}
         {Platform.OS !== "web" && showWeb && loginUrl && (
           <View style={styles.webContainer}>
             <WebView
@@ -258,19 +288,17 @@ const styles = StyleSheet.create({
     color: PALETTE.blueDark,
   },
 
-  /* Bigger logo */
   logo: {
     width: 72,
     height: 72,
     resizeMode: "contain",
   },
 
-  /* Center the card vertically */
   content: {
     flex: 1,
     paddingHorizontal: 20,
     justifyContent: "center",
-    marginTop: -100, // move card UP (adjust this number as needed)
+    marginTop: -100,
   },
 
   card: {
