@@ -30,6 +30,18 @@ const PALETTE = {
   discordBg: "#0D0D0D",
 };
 
+// Decide if /api/me response looks logged-in
+const looksAuthenticated = (me) => {
+  if (!me) return false;
+
+  if (me.authenticated === true) return true;
+  if (me.authenticated === false) return false;
+
+  if (me.name || me.login || me.email || me.username) return true;
+
+  return false;
+};
+
 export default function OAuthScreen() {
   const navigation = useNavigation();
 
@@ -40,37 +52,18 @@ export default function OAuthScreen() {
   const [loginUrl, setLoginUrl] = React.useState(null);
   const [webKey, setWebKey] = React.useState(0);
 
+  // Track which provider the user chose ("github" | "discord" | null)
+  const [currentProvider, setCurrentProvider] = React.useState(null);
+
   // For web polling after redirect
   const webPollRef = React.useRef(null);
 
-  // On mount: make sure we start logged out
-  React.useEffect(() => {
-    (async () => {
-      try {
-        await fetch(API.LOGOUT, { method: "POST", credentials: "include" });
-      } catch (e) {
-        console.warn("OAuthScreen: LOGOUT failed (ignored)", e);
-      } finally {
-        setMe(null);
-        setShowWeb(false);
-        setLoginUrl(null);
-        setWebKey((k) => k + 1);
-      }
-    })();
-
-    // Cleanup polling timer if screen unmounts
-    return () => {
-      if (webPollRef.current) {
-        clearInterval(webPollRef.current);
-        webPollRef.current = null;
-      }
-    };
-  }, []);
-
+  // Load /api/me and update state
   const loadMe = React.useCallback(async () => {
     try {
       const res = await fetch(API.ME, { credentials: "include" });
       const data = await res.json();
+      console.log("ME response:", data);
       setMe(data);
       return data;
     } catch (e) {
@@ -80,26 +73,95 @@ export default function OAuthScreen() {
     }
   }, []);
 
-  // Start login: platform-specific
+  // Cleanup only (no auto-login check on mount)
+  React.useEffect(() => {
+    return () => {
+      if (webPollRef.current) {
+        clearInterval(webPollRef.current);
+        webPollRef.current = null;
+      }
+    };
+  }, []);
+
+  const isAuthed = looksAuthenticated(me);
+  const avatarUri =
+    me?.avatarUrl || me?.avatar_url || me?.picture || me?.avatar || null;
+
+  const providerLabel =
+    currentProvider === "github"
+      ? "GitHub"
+      : currentProvider === "discord"
+      ? "Discord"
+      : "your account";
+
+  // When user taps "Continue to dashboard"
+  const onContinue = React.useCallback(async () => {
+    try {
+      await AsyncStorage.removeItem(TUTORIAL_KEY);
+    } catch (e) {
+      // ignore
+    }
+
+    navigation.navigate("Tabs", {
+      screen: "Dashboard",
+      params: { showTutorial: true },
+    });
+  }, [navigation]);
+
+  // Start login: platform-specific behavior
   const startLogin = React.useCallback(
-    (provider) => {
+    async (provider) => {
       const base =
         provider === "github" ? API.LOGIN_GITHUB : API.LOGIN_DISCORD;
 
+      // Remember which provider we are trying to use NOW
+      setCurrentProvider(provider);
+
+      // Reset any previous auth state in the UI
+      setMe(null);
+      setShowWeb(false);
+
+      // Always log out the backend session before starting a new OAuth login
+      try {
+        await fetch(API.LOGOUT, {
+          method: "POST",
+          credentials: "include",
+        });
+      } catch (e) {
+        console.warn("OAuthScreen: LOGOUT before login failed (ignored)", e);
+      }
+
       // WEB: open OAuth in a new tab & start polling /api/me
       if (Platform.OS === "web") {
+        if (webPollRef.current) {
+          clearInterval(webPollRef.current);
+          webPollRef.current = null;
+        }
+
+        setLoading(true);
         Linking.openURL(base);
 
-        // Avoid multiple intervals if user taps twice
-        if (!webPollRef.current) {
-          webPollRef.current = setInterval(async () => {
-            const data = await loadMe();
-            if (data && data.authenticated) {
-              clearInterval(webPollRef.current);
-              webPollRef.current = null;
-            }
-          }, 2000); // check every 2 seconds
-        }
+        let attempts = 0;
+        const maxAttempts = 15; // ~30s
+
+        webPollRef.current = setInterval(async () => {
+          attempts += 1;
+          const data = await loadMe();
+
+          if (looksAuthenticated(data)) {
+            clearInterval(webPollRef.current);
+            webPollRef.current = null;
+            setLoading(false);
+            setShowWeb(false);
+            return;
+          }
+
+          if (attempts >= maxAttempts) {
+            clearInterval(webPollRef.current);
+            webPollRef.current = null;
+            setLoading(false);
+          }
+        }, 2000);
 
         return;
       }
@@ -117,33 +179,18 @@ export default function OAuthScreen() {
     async (navState) => {
       const url = navState?.url || "";
       if (url.startsWith(API.OAUTH_FINAL)) {
-        setShowWeb(false);
         setLoading(true);
         try {
-          await loadMe();
+          const data = await loadMe();
+          console.log("After native OAuth, ME =", data);
         } finally {
           setLoading(false);
+          setShowWeb(false);
         }
       }
     },
     [loadMe]
   );
-
-  const onContinue = React.useCallback(async () => {
-    try {
-      await AsyncStorage.removeItem(TUTORIAL_KEY);
-    } catch (e) {}
-
-    navigation.navigate("Tabs", {
-      screen: "Dashboard",
-      params: { showTutorial: true },
-    });
-  }, [navigation]);
-
-  const avatarUri =
-    me?.avatarUrl || me?.avatar_url || me?.picture || me?.avatar || null;
-
-  const isAuthed = !!me && me.authenticated;
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -160,7 +207,7 @@ export default function OAuthScreen() {
       <View style={styles.headerAccent} />
 
       <View style={styles.content}>
-        {/* Login options (no active WebView, not yet authed) */}
+        {/* If NOT authenticated and not inside WebView, show provider buttons */}
         {!isAuthed && !showWeb && (
           <View style={styles.card}>
             <Text style={styles.title}>Welcome back</Text>
@@ -203,12 +250,12 @@ export default function OAuthScreen() {
           </View>
         )}
 
-        {/* Loading spinner */}
+        {/* Loading spinner during web polling or native finalization */}
         {loading && (
           <ActivityIndicator size="large" style={{ marginTop: 20 }} />
         )}
 
-        {/* After successful login */}
+        {/* After successful login: show confirmation + continue button */}
         {isAuthed && !showWeb && (
           <View style={styles.card}>
             {avatarUri && (
@@ -216,13 +263,9 @@ export default function OAuthScreen() {
             )}
             <Text style={styles.title}>You’re signed in</Text>
 
-            {me?.name ? (
-              <Text style={styles.sub}>Welcome, {me.name}!</Text>
-            ) : (
-              <Text style={styles.sub}>
-                Your session has been created successfully.
-              </Text>
-            )}
+            <Text style={styles.sub}>
+              Signed in with {providerLabel}. Continue to your dashboard.
+            </Text>
 
             <Pressable
               onPress={onContinue}
