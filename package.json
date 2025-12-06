@@ -3,13 +3,16 @@
   "version": "0.0.2",
   "private": true,
   "main": "app/index.js",
-  "scripts": {
-    "start": "expo start",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
-    "web": "expo start --web",
-    "test": "jest"
-  },
+"scripts": {
+  "start": "expo start",
+  "android": "expo run:android",
+  "ios": "expo run:ios",
+  "web": "expo start --web",
+  "build": "expo export --platform web --output-dir web-build",
+  "heroku-postbuild": "npm run build",
+  "start:server": "node server.js",
+  "test": "jest"
+},
   "dependencies": {
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-navigation/bottom-tabs": "^6.5.20",
