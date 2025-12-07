@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,9 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
+import { useAuth } from "../context/AuthContext";
+import API from "../lib/api";
 
 const PALETTE = {
   blueDark: "#053F7C",
@@ -20,28 +23,81 @@ const PALETTE = {
 };
 
 export default function ReminderScreen() {
-  const [reminders] = useState([
-    {
-      id: "1",
-      title: "Application Deadline",
-      dueDate: "2025-11-20",
-    },
-    {
-      id: "2",
-      title: "COR (Letter of Recommendation) Due",
-      dueDate: "2025-11-18",
-    },
-    {
-      id: "3",
-      title: "Personal Statement Due",
-      dueDate: "2025-12-05",
-    },
-    {
-      id: "4",
-      title: "Schedule GRE (if needed)",
-      dueDate: "2025-11-10",
-    },
-  ]);
+  const { me, refresh } = useAuth();
+  const [reminders, setReminders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch reminders from API
+  const fetchReminders = async () => {
+    try {
+      setLoading(true);
+      
+      let currentMe = me;
+      if (!currentMe || !currentMe.authenticated || (!currentMe.userId && !currentMe.id)) {
+        if (typeof refresh === "function") {
+          currentMe = await refresh();
+        }
+      }
+
+      const userId = currentMe?.userId || currentMe?.id;
+      if (!userId) {
+        setReminders([]);
+        setLoading(false);
+        return;
+      }
+
+      const url = `${API.BASE}/api/reminders?userId=${userId}`;
+      const res = await fetch(url, { credentials: "include" });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        console.warn("Failed to fetch reminders:", res.status, text);
+        setReminders([]);
+        setLoading(false);
+        return;
+      }
+
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        // Map API response to UI format
+        const mappedReminders = data.map((reminder: any) => ({
+          id: String(reminder.id),
+          title: reminder.title || "Reminder",
+          dueDate: reminder.reminderDate || reminder.reminder_date,
+          description: reminder.description,
+          reminderType: reminder.reminderType || reminder.reminder_type,
+          isCompleted: reminder.isCompleted || reminder.is_completed || false,
+        }));
+        
+        // Sort by date (earliest first)
+        mappedReminders.sort((a, b) => {
+          const dateA = new Date(a.dueDate).getTime();
+          const dateB = new Date(b.dueDate).getTime();
+          return dateA - dateB;
+        });
+        
+        setReminders(mappedReminders);
+      } else {
+        setReminders([]);
+      }
+    } catch (err) {
+      console.warn("Error fetching reminders:", err);
+      setReminders([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch reminders on mount and when screen is focused
+  useEffect(() => {
+    fetchReminders();
+  }, [me]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchReminders();
+    }, [me])
+  );
 
   // Compute urgency (within 14 days)
   const today = new Date();
@@ -64,8 +120,12 @@ export default function ReminderScreen() {
         Due: {new Date(item.dueDate).toLocaleDateString()}
       </Text>
 
+      {item.description && (
+        <Text style={s.descriptionText}>{item.description}</Text>
+      )}
+
       {item.urgent && (
-        <Text style={s.reminderText}>Reminder sent 2 weeks before deadline</Text>
+        <Text style={s.reminderText}>Due within 2 weeks</Text>
       )}
     </View>
   );
@@ -92,8 +152,12 @@ export default function ReminderScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={s.listContainer}
+        refreshing={loading}
+        onRefresh={fetchReminders}
         ListEmptyComponent={
-          <Text style={s.emptyText}>No reminders yet.</Text>
+          <Text style={s.emptyText}>
+            {loading ? "Loading reminders..." : "No reminders yet."}
+          </Text>
         }
       />
     </SafeAreaView>
@@ -172,6 +236,12 @@ const s = StyleSheet.create({
     fontSize: 13,
     color: PALETTE.blue,
     fontStyle: "italic",
+  },
+
+  descriptionText: {
+    marginTop: 4,
+    fontSize: 13,
+    color: PALETTE.subtext,
   },
 
   emptyText: {

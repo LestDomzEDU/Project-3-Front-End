@@ -236,6 +236,68 @@ export default function DashboardScreen() {
     </View>
   );
 
+  // Function to create reminder in database when saving a school
+  const createReminder = async (schoolId) => {
+    try {
+      let currentMe = me;
+      if (!currentMe || !currentMe.authenticated || (!currentMe.userId && !currentMe.id)) {
+        if (typeof refresh === "function") {
+          currentMe = await refresh();
+        }
+      }
+
+      const userId = currentMe?.userId || currentMe?.id;
+      if (!userId) {
+        console.warn("Cannot create reminder: user not authenticated");
+        return;
+      }
+
+      const url = `${API.BASE}/api/reminders?userId=${userId}&schoolId=${schoolId}`;
+      const res = await fetch(url, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        console.warn("Failed to create reminder:", res.status, text);
+      }
+    } catch (err) {
+      console.warn("Error creating reminder:", err);
+    }
+  };
+
+  // Function to delete reminder from database when removing a school
+  const deleteReminder = async (schoolId) => {
+    try {
+      let currentMe = me;
+      if (!currentMe || !currentMe.authenticated || (!currentMe.userId && !currentMe.id)) {
+        if (typeof refresh === "function") {
+          currentMe = await refresh();
+        }
+      }
+
+      const userId = currentMe?.userId || currentMe?.id;
+      if (!userId) {
+        console.warn("Cannot delete reminder: user not authenticated");
+        return;
+      }
+
+      const url = `${API.BASE}/api/reminders/school/${schoolId}?userId=${userId}`;
+      const res = await fetch(url, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        console.warn("Failed to delete reminder:", res.status, text);
+      }
+    } catch (err) {
+      console.warn("Error deleting reminder:", err);
+    }
+  };
+
   const renderItem = ({ item }) => {
     const id = item.id ?? item.schoolId ?? item.name;
     const saved = savedApps.find((a) => a.id === id);
@@ -270,17 +332,25 @@ export default function DashboardScreen() {
           )}
 
           <TouchableOpacity
-            onPress={() =>
-              saved
-                ? removeSavedApp(id)
-                : addSavedApp({
-                    id,
-                    name,
-                    company: program,
-                    urgent: !!item.urgent,
-                    link: website,
-                  })
-            }
+            onPress={async () => {
+              if (saved) {
+                // Remove from local state
+                removeSavedApp(id);
+                // Delete reminder from database
+                await deleteReminder(id);
+              } else {
+                // Add to local state
+                addSavedApp({
+                  id,
+                  name,
+                  company: program,
+                  urgent: !!item.urgent,
+                  link: website,
+                });
+                // Create reminder in database
+                await createReminder(id);
+              }
+            }}
             style={saved ? s.removeBtn : s.saveBtn}
           >
             <Text style={saved ? s.removeBtnText : s.saveBtnText}>
