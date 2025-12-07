@@ -5,13 +5,15 @@ import {
   StyleSheet,
   FlatList,
   Image,
+  TouchableOpacity,
+  Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "../context/AuthContext";
 import API from "../lib/api";
 
-const PALETTE = {
+  const PALETTE = {
   blueDark: "#053F7C",
   blue: "#0061A8",
   gold: "#FFC727",
@@ -20,6 +22,7 @@ const PALETTE = {
   subtext: "#4B5563",
   danger: "#B00020",
   cardBorder: "#DCE8F2",
+  success: "#10B981", // Green for completed reminders
 };
 
 export default function ReminderScreen() {
@@ -69,7 +72,7 @@ export default function ReminderScreen() {
           isCompleted: reminder.isCompleted || reminder.is_completed || false,
         }));
         
-        // Sort by date (earliest first)
+        // sorting by date (earliest first)
         mappedReminders.sort((a, b) => {
           const dateA = new Date(a.dueDate).getTime();
           const dateB = new Date(b.dueDate).getTime();
@@ -88,7 +91,7 @@ export default function ReminderScreen() {
     }
   };
 
-  // Fetch reminders on mount and when screen is focused
+  // fetching reminders on mount and when screen is focused
   useEffect(() => {
     fetchReminders();
   }, [me]);
@@ -99,7 +102,7 @@ export default function ReminderScreen() {
     }, [me])
   );
 
-  // Compute urgency (within 14 days)
+  // 
   const today = new Date();
   const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -109,24 +112,121 @@ export default function ReminderScreen() {
     return { ...item, urgent: diff <= TWO_WEEKS_MS && diff > 0 };
   });
 
+  // deliting reminder function
+  const deleteReminder = async (reminderId: string) => {
+    try {
+      let currentMe = me;
+      if (!currentMe || !currentMe.authenticated || (!currentMe.userId && !currentMe.id)) {
+        if (typeof refresh === "function") {
+          currentMe = await refresh();
+        }
+      }
+
+      const userId = currentMe?.userId || currentMe?.id;
+      if (!userId) {
+        console.warn("Cannot delete reminder: user not authenticated");
+        return;
+      }
+
+      const url = `${API.BASE}/api/reminders/${reminderId}?userId=${userId}`;
+      const res = await fetch(url, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        console.warn("Failed to delete reminder:", res.status, text);
+        return;
+      }
+
+      // quick refresh reminders after deletion
+      fetchReminders();
+    } catch (err) {
+      console.warn("Error deleting reminder:", err);
+    }
+  };
+
+  // toggling reminder completed status function
+  const toggleCompleted = async (reminderId: string) => {
+    try {
+      let currentMe = me;
+      if (!currentMe || !currentMe.authenticated || (!currentMe.userId && !currentMe.id)) {
+        if (typeof refresh === "function") {
+          currentMe = await refresh();
+        }
+      }
+
+      const userId = currentMe?.userId || currentMe?.id;
+      if (!userId) {
+        console.warn("Cannot toggle reminder completion: user not authenticated");
+        return;
+      }
+
+      const url = `${API.BASE}/api/reminders/${reminderId}/complete?userId=${userId}`;
+      const res = await fetch(url, {
+        method: "PATCH",
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        console.warn("Failed to toggle reminder completion:", res.status, text);
+        return;
+      }
+
+      // quick refresh again after toggling completion
+      fetchReminders();
+    } catch (err) {
+      console.warn("Error toggling reminder completion:", err);
+    }
+  };
+
   const renderItem = ({ item }: any) => (
-    <View style={s.card}>
-      <View style={{ flexDirection: "row", alignItems: "center" }}>
-        <Text style={s.cardTitle}>{item.title}</Text>
-        {item.urgent && <Text style={s.urgent}> ❗</Text>}
+    <View style={[
+      s.card,
+      item.isCompleted && s.cardCompleted
+    ]}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
+            <Text style={s.cardTitle}>{item.title}</Text>
+            {item.urgent && !item.isCompleted && <Text style={s.urgent}> ❗</Text>}
+            {item.isCompleted && <Text style={s.completedBadge}> ✓ Completed</Text>}
+          </View>
+
+          <Text style={s.dateText}>
+            Due: {new Date(item.dueDate).toLocaleDateString()}
+          </Text>
+
+          {item.description && (
+            <Text style={s.descriptionText}>{item.description}</Text>
+          )}
+
+          {item.urgent && !item.isCompleted && (
+            <Text style={s.reminderText}>Due within 2 weeks</Text>
+          )}
+        </View>
+
+        <View style={{ flexDirection: "row", marginLeft: 8 }}>
+          <Pressable
+            onPress={() => toggleCompleted(item.id)}
+            style={[
+              s.completeButton,
+              item.isCompleted && s.completeButtonActive,
+              { marginRight: 8 }
+            ]}
+          >
+            <Text style={s.completeButtonText}>✓</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => deleteReminder(item.id)}
+            style={s.deleteButton}
+          >
+            <Text style={s.deleteButtonText}>×</Text>
+          </Pressable>
+        </View>
       </View>
-
-      <Text style={s.dateText}>
-        Due: {new Date(item.dueDate).toLocaleDateString()}
-      </Text>
-
-      {item.description && (
-        <Text style={s.descriptionText}>{item.description}</Text>
-      )}
-
-      {item.urgent && (
-        <Text style={s.reminderText}>Due within 2 weeks</Text>
-      )}
     </View>
   );
 
@@ -214,6 +314,11 @@ const s = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
   },
+  cardCompleted: {
+    borderColor: PALETTE.success,
+    borderWidth: 2,
+    backgroundColor: "#F0FDF4", // Light green background
+  },
   cardTitle: {
     fontSize: 16,
     fontWeight: "700",
@@ -248,5 +353,43 @@ const s = StyleSheet.create({
     marginTop: 24,
     color: PALETTE.subtext,
     textAlign: "center",
+  },
+
+  /* ⇢ Action Buttons */
+  completeButton: {
+    backgroundColor: "#E5E7EB", // Gray when not completed
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  completeButtonActive: {
+    backgroundColor: PALETTE.success, // Green when completed
+  },
+  completeButtonText: {
+    color: PALETTE.white,
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  deleteButton: {
+    backgroundColor: PALETTE.danger,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  deleteButtonText: {
+    color: PALETTE.white,
+    fontSize: 24,
+    fontWeight: "700",
+    lineHeight: 24,
+  },
+  completedBadge: {
+    marginLeft: 8,
+    color: PALETTE.success,
+    fontSize: 12,
+    fontWeight: "700",
   },
 });

@@ -236,7 +236,7 @@ export default function DashboardScreen() {
     </View>
   );
 
-  // Function to create reminder in database when saving a school
+  // functio to create reminder in database when saving a school
   const createReminder = async (schoolId) => {
     try {
       let currentMe = me;
@@ -267,7 +267,7 @@ export default function DashboardScreen() {
     }
   };
 
-  // Function to delete reminder from database when removing a school
+  // delete reminder from database when removing a school
   const deleteReminder = async (schoolId) => {
     try {
       let currentMe = me;
