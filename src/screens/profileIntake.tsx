@@ -77,6 +77,61 @@ const SelectField: React.FC<SelectFieldProps> = ({
   );
 };
 
+const MajorSelectField = ({
+  value,
+  options,
+  onChange,
+}: {
+  value: string | null;
+  options: string[];
+  onChange: (v: string) => void;
+}) => {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <View style={styles.field}>
+      {/* OUTSIDE LABEL */}
+      <Text style={styles.label}>Field / Major</Text>
+
+      {/* DROPDOWN BOX */}
+      <TouchableOpacity style={styles.select} onPress={() => setOpen(true)}>
+        <Text style={styles.selectText}>
+          {value && value.length > 0 ? value : "Choose your major"}
+        </Text>
+      </TouchableOpacity>
+
+      {/* MODAL LIST */}
+      <Modal visible={open} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Select Field / Major</Text>
+
+            <FlatList
+              data={options}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={styles.modalItem}
+                  onPress={() => {
+                    onChange(item);
+                    setOpen(false);
+                  }}
+                >
+                  <Text style={styles.modalItemText}>{item}</Text>
+                </Pressable>
+              )}
+            />
+
+            <Pressable style={styles.modalClose} onPress={() => setOpen(false)}>
+              <Text style={styles.modalCloseText}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+};
+
 export default function ProfileIntake() {
   const { me, refresh } = useAuth(); // me may be null until auth finishes
   // console.log("Auth user me:", me);
@@ -111,6 +166,7 @@ export default function ProfileIntake() {
   const privateOptions = ["Private", "Public"];
   const timeOptions = ["Full-time", "Part-time"];
   const formatOptions = ["In person", "Hybrid", "Online"];
+  const majorOptions = ["Math", "English", "Computer Science"];
 
   // When running under Jest tests, render a simplified version that avoids
   // native modal/keyboard/scroll behaviour which can be problematic in
@@ -553,15 +609,11 @@ export default function ProfileIntake() {
             onChange={setStateLocation}
           />
 
-          <View style={styles.field}>
-            <Text style={styles.label}>Field / Major</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., Computer Science"
-              value={major}
-              onChangeText={setMajor}
-            />
-          </View>
+          <MajorSelectField
+          value={major}
+          options={majorOptions}
+          onChange={setMajor}
+          />
 
           <View style={styles.inlineField}>
             <Text style={styles.label}>Capstone Required?</Text>
