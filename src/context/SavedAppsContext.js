@@ -1,4 +1,5 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SavedAppsContext = createContext({
   savedApps: [],
@@ -9,15 +10,35 @@ const SavedAppsContext = createContext({
 export function SavedAppsProvider({ children }) {
   const [savedApps, setSavedApps] = useState([]);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem("savedApps");
+        if (stored) {
+          setSavedApps(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.log("Error loading saved apps:", e);
+      }
+    })();
+  }, []);
+
   function addSavedApp(app) {
     setSavedApps((prev) => {
       if (prev.find((a) => a.id === app.id)) return prev;
-      return [app, ...prev];
+      const updated = [app, ...prev];
+      AsyncStorage.setItem("savedApps", JSON.stringify(updated));
+      return updated;
+      // return [app, ...prev];
     });
   }
 
   function removeSavedApp(id) {
-    setSavedApps((prev) => prev.filter((a) => a.id !== id));
+    setSavedApps((prev) => {
+      const updated = prev.filter((a) => a.id !== id);
+      AsyncStorage.setItem("savedApps", JSON.stringify(updated));
+      return updated;
+    });
   }
 
   return (
