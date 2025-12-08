@@ -7,6 +7,8 @@ import {
   Pressable,
   ActivityIndicator,
   Image,
+  Platform,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -28,6 +30,18 @@ const PALETTE = {
   discordBg: "#0D0D0D",
 };
 
+// Decide if /api/me response looks logged-in
+const looksAuthenticated = (me) => {
+  if (!me) return false;
+
+  if (me.authenticated === true) return true;
+  if (me.authenticated === false) return false;
+
+  if (me.name || me.login || me.email || me.username) return true;
+
+  return false;
+};
+
 export default function OAuthScreen() {
   const navigation = useNavigation();
 
@@ -38,78 +52,52 @@ export default function OAuthScreen() {
   const [loginUrl, setLoginUrl] = React.useState(null);
   const [webKey, setWebKey] = React.useState(0);
 
-  // ─────────────────────────────────────────
-  // Initial: just check if there is an existing session
-  // (do NOT auto-logout here – that’s what was causing the loop)
-  // ─────────────────────────────────────────
+  // Track which provider user chose ("github" | "discord" | null)
+  const [currentProvider, setCurrentProvider] = React.useState(null);
+
+  // For web polling after redirect
+  const webPollRef = React.useRef(null);
+
+  // Load /api/me and update state
   const loadMe = React.useCallback(async () => {
     try {
       const res = await fetch(API.ME, { credentials: "include" });
       const data = await res.json();
       console.log("OAuthScreen /api/me =>", data);
       setMe(data);
+      return data;
     } catch (e) {
       console.warn("OAuthScreen: failed to load /api/me", e);
       setMe(null);
+      return null;
     }
   }, []);
 
+  // On mount: see if there is an existing session (no logout here)
   React.useEffect(() => {
     loadMe();
+
+    // cleanup polling interval on unmount
+    return () => {
+      if (webPollRef.current) {
+        clearInterval(webPollRef.current);
+        webPollRef.current = null;
+      }
+    };
   }, [loadMe]);
 
-  // ─────────────────────────────────────────
-  // Start login with a specific provider
-  // ─────────────────────────────────────────
-  const startLogin = React.useCallback(
-    async (provider) => {
-      setLoading(true);
-      setShowWeb(false);
-      setLoginUrl(null);
+  const isAuthed = looksAuthenticated(me);
+  const avatarUri =
+    me?.avatarUrl || me?.avatar_url || me?.picture || me?.avatar || null;
 
-      // Make sure any old session is cleared so switching
-      // from GitHub ↔ Discord doesn’t confuse things.
-      try {
-        await fetch(API.LOGOUT, { method: "POST", credentials: "include" });
-      } catch (e) {
-        console.warn("OAuthScreen: LOGOUT before login failed (ignored)", e);
-      }
+  const providerLabel =
+    currentProvider === "github"
+      ? "GitHub"
+      : currentProvider === "discord"
+      ? "Discord"
+      : "your account";
 
-      const base =
-        provider === "github" ? API.LOGIN_GITHUB : API.LOGIN_DISCORD;
-
-      setMe(null); // we’re starting a fresh login
-      setLoginUrl(base);
-      setShowWeb(true);
-      setWebKey((k) => k + 1);
-      setLoading(false);
-    },
-    []
-  );
-
-  // ─────────────────────────────────────────
-  // Handle navigation events inside the WebView
-  // ─────────────────────────────────────────
-  const onWebNav = React.useCallback(
-    async (navState) => {
-      const url = navState?.url || "";
-      // When backend redirects to the final URL, we consider OAuth done.
-      if (url.startsWith(API.OAUTH_FINAL)) {
-        setShowWeb(false);
-        setLoading(true);
-        try {
-          await loadMe();
-        } finally {
-          setLoading(false);
-        }
-      }
-    },
-    [loadMe]
-  );
-
-  // ─────────────────────────────────────────
-  // After successful login, continue into the app
-  // ─────────────────────────────────────────
+  // After user taps "Continue to dashboard"
   const onContinue = React.useCallback(async () => {
     try {
       await AsyncStorage.removeItem(TUTORIAL_KEY);
@@ -123,10 +111,90 @@ export default function OAuthScreen() {
     });
   }, [navigation]);
 
-  const avatarUri =
-    me?.avatarUrl || me?.avatar_url || me?.picture || me?.avatar || null;
+  // Start login with a given provider
+  const startLogin = React.useCallback(
+    async (provider) => {
+      const base =
+        provider === "github" ? API.LOGIN_GITHUB : API.LOGIN_DISCORD;
 
-  const isAuthed = !!me && me.authenticated;
+      // remember which provider we are using now
+      setCurrentProvider(provider);
+
+      // Clear any old /api/me state + webview
+      setMe(null);
+      setShowWeb(false);
+      setLoginUrl(null);
+
+      // Clear any existing polling interval
+      if (webPollRef.current) {
+        clearInterval(webPollRef.current);
+        webPollRef.current = null;
+      }
+
+      setLoading(true);
+
+      // Always log out previous backend session so switching providers is clean
+      try {
+        await fetch(API.LOGOUT, { method: "POST", credentials: "include" });
+      } catch (e) {
+        console.warn("OAuthScreen: LOGOUT before login failed (ignored)", e);
+      }
+
+      // WEB: open provider in a new tab/window and poll /api/me
+      if (Platform.OS === "web") {
+        Linking.openURL(base);
+
+        let attempts = 0;
+        const maxAttempts = 15; // ~30 seconds
+
+        webPollRef.current = setInterval(async () => {
+          attempts += 1;
+          const data = await loadMe();
+
+          if (looksAuthenticated(data)) {
+            clearInterval(webPollRef.current);
+            webPollRef.current = null;
+            setLoading(false);
+            setShowWeb(false);
+            return;
+          }
+
+          if (attempts >= maxAttempts) {
+            clearInterval(webPollRef.current);
+            webPollRef.current = null;
+            setLoading(false);
+          }
+        }, 2000);
+
+        return;
+      }
+
+      // NATIVE: open provider inside WebView
+      setLoginUrl(base);
+      setShowWeb(true);
+      setWebKey((k) => k + 1);
+      setLoading(false);
+    },
+    [loadMe]
+  );
+
+  // Native WebView navigation handler
+  const onWebNav = React.useCallback(
+    async (navState) => {
+      const url = navState?.url || "";
+      if (url.startsWith(API.OAUTH_FINAL)) {
+        setLoading(true);
+        try {
+          const data = await loadMe();
+          console.log("After native OAuth, /api/me =", data);
+        } finally {
+          setLoading(false);
+          setShowWeb(false);
+        }
+      }
+    },
+    [loadMe]
+  );
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -143,7 +211,7 @@ export default function OAuthScreen() {
       <View style={styles.headerAccent} />
 
       <View style={styles.content}>
-        {/* Initial state: choose provider */}
+        {/* If NOT authenticated and not inside WebView, show provider buttons */}
         {!isAuthed && !showWeb && (
           <View style={styles.card}>
             <Text style={styles.title}>Welcome back</Text>
@@ -186,12 +254,12 @@ export default function OAuthScreen() {
           </View>
         )}
 
-        {/* Loading indicator while we’re fetching /api/me */}
+        {/* Loading spinner during web polling or native finalization */}
         {loading && (
           <ActivityIndicator size="large" style={{ marginTop: 20 }} />
         )}
 
-        {/* After login */}
+        {/* After successful login: confirmation + continue button */}
         {isAuthed && !showWeb && (
           <View style={styles.card}>
             {avatarUri && (
@@ -199,13 +267,9 @@ export default function OAuthScreen() {
             )}
             <Text style={styles.title}>You’re signed in</Text>
 
-            {me?.name ? (
-              <Text style={styles.sub}>Welcome, {me.name}!</Text>
-            ) : (
-              <Text style={styles.sub}>
-                Your session has been created successfully.
-              </Text>
-            )}
+            <Text style={styles.sub}>
+              Signed in with {providerLabel}. Continue to your dashboard.
+            </Text>
 
             <Pressable
               onPress={onContinue}
@@ -219,8 +283,8 @@ export default function OAuthScreen() {
           </View>
         )}
 
-        {/* WebView for OAuth (native platforms) */}
-        {showWeb && loginUrl && (
+        {/* WebView for OAuth — native platforms only */}
+        {Platform.OS !== "web" && showWeb && loginUrl && (
           <View style={styles.webContainer}>
             <WebView
               key={webKey}
@@ -271,19 +335,17 @@ const styles = StyleSheet.create({
     color: PALETTE.blueDark,
   },
 
-  // Bigger logo
   logo: {
     width: 72,
     height: 72,
     resizeMode: "contain",
   },
 
-  // Center the card vertically
   content: {
     flex: 1,
     paddingHorizontal: 20,
     justifyContent: "center",
-    marginTop: -100, // move card UP
+    marginTop: -100,
   },
 
   card: {
