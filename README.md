@@ -1,4 +1,4 @@
-# Project 3 — Master's Application Assistant (Front-End)
+# GradQuest
 
 A web and mobile platform that helps students discover, shortlist, and manage master's program applications. The app matches students to best-fit programs based on their preferences and constraints (funding, location, deadlines), and automates busywork like requirement tracking and deadline reminders.
 
