@@ -6,6 +6,15 @@ global.setImmediate =
   global.setImmediate || ((fn, ...args) => global.setTimeout(fn, 0, ...args));
 global.clearImmediate = global.clearImmediate || global.clearTimeout;
 
+// Mock @react-native-async-storage/async-storage
+jest.mock("@react-native-async-storage/async-storage", () => ({
+  setItem: jest.fn(() => Promise.resolve()),
+  getItem: jest.fn(() => Promise.resolve(null)),
+  removeItem: jest.fn(() => Promise.resolve()),
+  clear: jest.fn(() => Promise.resolve()),
+  getAllKeys: jest.fn(() => Promise.resolve([])),
+}));
+
 // Mock @react-navigation/native
 jest.mock("@react-navigation/native", () => {
   return {
